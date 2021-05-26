@@ -1,0 +1,5 @@
+obj-x86_64-linux-gnu/
+debian/*
+!debian/postinst
+!debian/prerm
+!debian/shlibs.local

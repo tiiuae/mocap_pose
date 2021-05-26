@@ -1,0 +1,15 @@
+#!/bin/bash
+
+mkdir -p /etc/udev/rules.d
+
+cat << EOF > /etc/udev/rules.d/81-vive.rules
+
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2101", TAG+="uaccess", TAG+="systemd", ENV{SYSTEMD_WANTS}="indoor_pos.service"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2300", TAG+="uaccess", TAG+="systemd", ENV{SYSTEMD_WANTS}="indoor_pos.service"
+
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2101", MODE="0666", GROUP="plugdev"
+SUBSYSTEM=="usb", ATTRS{idVendor}=="28de", ATTRS{idProduct}=="2300", MODE="0666", GROUP="plugdev"
+
+EOF
+
+chmod 644 /etc/udev/rules.d/81-vive.rules

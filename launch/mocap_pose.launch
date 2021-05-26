@@ -1,0 +1,30 @@
+<!--
+  Arguments:
+  lat   : Home latitude
+  lon   : Home longitude
+  alt   : Home altitude
+  freq  : Update frequency of the PX4_msgs SensorGps message
+  n_off : Offset angle (degrees) from geographical north to the tracker calibrated y-axis
+
+  example usage:
+    ros2 launch mocap_pose mocap_pose.launch lat:=60.000 lon:=31.000 alt:=50.0 n_off:=1.570796
+    ros2 launch mocap_pose mocap_pose.launch lat:=60.000 lon:=31.000 alt:=50.0
+
+-->
+
+<launch>
+  <arg name="lat" default="61.50341"/>
+  <arg name="lon" default="23.77509"/>
+  <arg name="alt" default="110.0"/>
+  <arg name="freq" default="10"/>
+  <arg name="n_off" default="0.0"/>
+
+  <node name="mocap_pose" pkg="mocap_pose" exec="mocap_pose_node" namespace='$(env DRONE_DEVICE_ID)'>
+    <param name="home_lat" value="$(var lat)"/>
+    <param name="home_lon" value="$(var lon)"/>
+    <param name="home_alt" value="$(var alt)"/>
+    <param name="frequency" value="$(var freq)"/>
+    <param name="north_offset" value="$(var n_off)"/>
+  </node>
+</launch>
+

@@ -25,7 +25,6 @@ struct MocapPose::Impl
     // int _update_freq;
     geodesy::UTMPoint home;
     double north_offset = 0.0;
-    double declination = 0.0;
     double publishing_timestep = 1.0;
 
     rclcpp::Time last_timestamp{};
@@ -84,10 +83,6 @@ struct MocapPose::Impl
         // ToDo: not corrected for north!!
         const double heading_rad = -atan2(siny_cosp, cosy_cosp);
 
-        /*
-            RCLCPP_INFO(this->_node->get_logger(), "[%lu] lat: %.15lf, lon: %.15lf, alt: %.15lf",
-                timecode, point.latitude, point.longitude, point.altitude);
-        */
         px4_msgs::msg::SensorGps sensor_gps;
         sensor_gps.timestamp = timecode;
         sensor_gps.lat = (uint32_t)std::round(point.latitude * 10000000);
@@ -127,7 +122,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     this->declare_parameter<double>("home_lon", 0.0);
     this->declare_parameter<double>("home_alt", 0.0);
     this->declare_parameter<double>("north_offset", 0.0);
-    this->declare_parameter<double>("declination", 0.0);
     this->declare_parameter<double>("frequency", 10.0);
     this->declare_parameter<std::string>("server_address", "192.168.43.98");
     this->declare_parameter<std::string>("body_name", "sad04");
@@ -137,7 +131,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     this->get_parameter("home_lat", point.latitude);
     this->get_parameter("home_lon", point.longitude);
     this->get_parameter("home_alt", point.altitude);
-    this->get_parameter("declination", impl_->declination);
     this->get_parameter("north_offset", n_off);
     this->get_parameter("server_address", impl_->serverAddress);
     this->get_parameter("body_name", impl_->bodyName);
@@ -166,11 +159,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
                 impl_->home.zone,
                 impl_->home.band);
 
-    RCLCPP_INFO(this->get_logger(),
-                "Update freq:  north_offset: %.3lf deg (%lf rad), declination: %.3lf",
-                n_off,
-                impl_->north_offset,
-                impl_->declination);
 
     //    impl_->_control_sub = this->create_subscription<std_msgs::msg::String>(
     //        "IndoorPos_ctrl", 10, std::bind(&IndoorPos::Control, this, _1));
