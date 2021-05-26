@@ -5,19 +5,21 @@
   alt   : Home altitude
   freq  : Update frequency of the PX4_msgs SensorGps message
   n_off : Offset angle (degrees) from geographical north to the tracker calibrated y-axis
+  address : name or IP address of the Qualisys Mocap Server
 
   example usage:
     ros2 launch mocap_pose mocap_pose.launch lat:=60.000 lon:=31.000 alt:=50.0 n_off:=1.570796
     ros2 launch mocap_pose mocap_pose.launch lat:=60.000 lon:=31.000 alt:=50.0
-
 -->
 
 <launch>
   <arg name="lat" default="61.50341"/>
   <arg name="lon" default="23.77509"/>
   <arg name="alt" default="110.0"/>
-  <arg name="freq" default="10"/>
+  <arg name="freq" default="10.0"/>
   <arg name="n_off" default="0.0"/>
+  <arg name="address" default="192.168.43.89"/>
+  <arg name="name" default="sad04"/>
 
   <node name="mocap_pose" pkg="mocap_pose" exec="mocap_pose_node" namespace='$(env DRONE_DEVICE_ID)'>
     <param name="home_lat" value="$(var lat)"/>
@@ -25,6 +27,9 @@
     <param name="home_alt" value="$(var alt)"/>
     <param name="frequency" value="$(var freq)"/>
     <param name="north_offset" value="$(var n_off)"/>
+    <param name="server_address" value="$(var address)"/>
+    <param name="body_name" value="$(var name)"/>
+
   </node>
 </launch>
 

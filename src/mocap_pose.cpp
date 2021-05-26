@@ -17,8 +17,8 @@ struct MocapPose::Impl
 {
     std::string serverAddress = "192.168.43.98";
     unsigned short basePort = 22222;
-    int majorVersion = 1;
-    int minorVersion = 19;
+    int sdkMajorVersion = 1;
+    int sdkMinorVersion = 19;
     bool bigEndian = false;
     std::string bodyName = "drone";
 
@@ -31,7 +31,6 @@ struct MocapPose::Impl
     rclcpp::Time last_published_timestamp{};
     Eigen::Vector3f last_position{};
     Eigen::Vector3f last_velocity{};
-
 
     rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr publisher;
     // rclcpp::Subscription<std_msgs::msg::String>::SharedPtr  _control_sub;
@@ -63,9 +62,9 @@ struct MocapPose::Impl
 
         // filter velocity, as it's too noisy
         const float avg_factor = 0.1F;
-        if(std::isnan(last_velocity[0]) || std::isnan(last_velocity[1]) || std::isnan(last_velocity[0]))
+        if (std::isnan(last_velocity[0]) || std::isnan(last_velocity[1]) || std::isnan(last_velocity[0]))
         {
-            last_velocity = Eigen::Vector3f(0,0,0);
+            last_velocity = Eigen::Vector3f(0, 0, 0);
         }
 
         velocity = velocity * avg_factor + last_velocity * (1.F - avg_factor);
@@ -115,15 +114,14 @@ struct MocapPose::Impl
 
 MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
 {
-    RCLCPP_INFO(this->get_logger(), "Mocap positioning");
-    // impl_->_node = this;
+    RCLCPP_INFO(this->get_logger(), "MocapPose (Motion Capture Positioning Service)");
 
-    this->declare_parameter<double>("home_lat", 0.0);
-    this->declare_parameter<double>("home_lon", 0.0);
-    this->declare_parameter<double>("home_alt", 0.0);
+    this->declare_parameter<double>("home_lat", 61.50341);
+    this->declare_parameter<double>("home_lon", 23.77509);
+    this->declare_parameter<double>("home_alt", 110.0);
     this->declare_parameter<double>("north_offset", 0.0);
     this->declare_parameter<double>("frequency", 10.0);
-    this->declare_parameter<std::string>("server_address", "192.168.43.98");
+    this->declare_parameter<std::string>("server_address", "192.168.43.89");
     this->declare_parameter<std::string>("body_name", "sad04");
 
     double n_off = 0.0, frequency = 0.0;
@@ -136,10 +134,12 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     this->get_parameter("body_name", impl_->bodyName);
     this->get_parameter("frequency", frequency);
 
-    if(frequency > 0.0)
+    if (frequency > 0.0)
     {
         impl_->publishing_timestep = 1.0 / frequency;
     }
+
+    RCLCPP_INFO(this->get_logger(), "Frequency: %lf, frame_delay: %lf", frequency, impl_->publishing_timestep);
 
     impl_->north_offset = M_PI * (n_off / 180.0);
 
@@ -158,7 +158,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
                 impl_->home.altitude,
                 impl_->home.zone,
                 impl_->home.band);
-
 
     //    impl_->_control_sub = this->create_subscription<std_msgs::msg::String>(
     //        "IndoorPos_ctrl", 10, std::bind(&IndoorPos::Control, this, _1));
@@ -180,46 +179,51 @@ void MocapPose::WorkerThread()
     bool streamFrames = false;
     unsigned short udpPort = 6734;
 
-    //    if (impl_->serverAddress.empty())
-    //    {
-    //        // Try discovering Mocap Server automatically
-    //        while (impl_->worker_thread_running && impl_->serverAddress.empty())
-    //        {
-    //            RCLCPP_INFO(this->get_logger(), "Trying to discover Mocap Server ...");
-    //
-    //            if (rtProtocol.DiscoverRTServer(4534, true))
-    //            {
-    //                std::this_thread::sleep_for(std::chrono::seconds(1));
-    //                const auto numberOfResponses = rtProtocol.GetNumberOfDiscoverResponses();
-    //                for (auto index = 0; index < numberOfResponses; index++)
-    //                {
-    //                    unsigned int addr;
-    //                    unsigned short port;
-    //                    std::string message;
-    //                    if (rtProtocol.GetDiscoverResponse(index, addr, port, message) && addr > 0)
-    //                    {
-    //                        std::stringstream ip_address_steam;
-    //                        ip_address_steam << int(0xFFU & addr) << ".";
-    //                        ip_address_steam << int(0xFFU & (addr >> 8U)) << ".";
-    //                        ip_address_steam << int(0xFFU & (addr >> 16U)) << ".";
-    //                        ip_address_steam << int(0xFFU & (addr >> 24U));
-    //                        impl_->basePort = port;
-    //                        std::getline(ip_address_steam, impl_->serverAddress);
-    //
-    //                        RCLCPP_INFO(this->get_logger(),
-    //                                    "Discovered Mocap Server: %s:%d - %s",
-    //                                    impl_->serverAddress.c_str(),
-    //                                    impl_->basePort,
-    //                                    message.c_str());
-    //                    }
-    //                }
-    //            }
-    //            else
-    //            {
-    //                std::this_thread::sleep_for(std::chrono::seconds(1));
-    //            }
-    //        }
-    //    }
+#if 0 == 1  // ToDo: Do we need automatic server discovery?
+        if (impl_->serverAddress.empty())
+        {
+            // This code suppose to discover Qualisys Server automatically, it even works when running from sdk sample app,
+            // However, it crushes when run under ROS node. Something connected to socket buffer overflow.
+
+            // Try discovering Mocap Server automatically
+            while (impl_->worker_thread_running && impl_->serverAddress.empty())
+            {
+                RCLCPP_INFO(this->get_logger(), "Trying to discover Mocap Server ...");
+
+                if (rtProtocol.DiscoverRTServer(4534, true))
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    const auto numberOfResponses = rtProtocol.GetNumberOfDiscoverResponses();
+                    for (auto index = 0; index < numberOfResponses; index++)
+                    {
+                        unsigned int addr;
+                        unsigned short port;
+                        std::string message;
+                        if (rtProtocol.GetDiscoverResponse(index, addr, port, message) && addr > 0)
+                        {
+                            std::stringstream ip_address_steam;
+                            ip_address_steam << int(0xFFU & addr) << ".";
+                            ip_address_steam << int(0xFFU & (addr >> 8U)) << ".";
+                            ip_address_steam << int(0xFFU & (addr >> 16U)) << ".";
+                            ip_address_steam << int(0xFFU & (addr >> 24U));
+                            impl_->basePort = port;
+                            std::getline(ip_address_steam, impl_->serverAddress);
+
+                            RCLCPP_INFO(this->get_logger(),
+                                        "Discovered Mocap Server: %s:%d - %s",
+                                        impl_->serverAddress.c_str(),
+                                        impl_->basePort,
+                                        message.c_str());
+                        }
+                    }
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            }
+        }
+#endif
 
     while (impl_->worker_thread_running)
     {
@@ -228,8 +232,8 @@ void MocapPose::WorkerThread()
             if (!rtProtocol.Connect(impl_->serverAddress.c_str(),
                                     impl_->basePort,
                                     &udpPort,
-                                    impl_->majorVersion,
-                                    impl_->minorVersion,
+                                    impl_->sdkMajorVersion,
+                                    impl_->sdkMinorVersion,
                                     impl_->bigEndian))
             {
                 RCLCPP_WARN(this->get_logger(), "rtProtocol.Connect: %s", rtProtocol.GetErrorString());
@@ -295,14 +299,20 @@ void MocapPose::WorkerThread()
 
                             const auto timestamp = rclcpp::Clock().now();
                             const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp);
-                            const bool time_to_publish = impl_->last_published_timestamp.seconds() + impl_->publishing_timestep >= timestamp.seconds();
+                            const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
+                                                          impl_->publishing_timestep) <= timestamp.seconds();
+                            const bool very_first_message = impl_->last_published_timestamp.nanoseconds() == 0;
 
-                            if(impl_->last_timestamp.nanoseconds() == 0 || time_to_publish)
+                            if (very_first_message || time_to_publish)
                             {
+                                RCLCPP_INFO(this->get_logger(),
+                                            "Publish GPS at time %lf, previous_time: %lf",
+                                            timestamp.seconds(),
+                                            impl_->last_published_timestamp.seconds());
+
                                 impl_->publisher->publish(gps_msg);
                                 impl_->last_published_timestamp = timestamp;
                             }
-
                         }
                     }
                 }

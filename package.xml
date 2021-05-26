@@ -3,9 +3,9 @@
 <package format="3">
   <name>mocap_pose</name>
   <version>0.0.1</version>
-  <description>Converts Qualisys Mocap pose into ROS2 / PX4 Gps message</description>
-  <maintainer email="sergey.smirnov@unikie.com">sergey</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Converts Qualisys Mocap pose into ROS2 / PX4 GPS message</description>
+  <maintainer email="sergey.smirnov@unikie.com">Sergey Smirnov</maintainer>
+  <license>BSD</license>
 
   <depend>rclcpp</depend>
   <depend>geodesy</depend>

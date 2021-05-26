@@ -20,7 +20,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(geodesy REQUIRED)
 find_package(px4_msgs REQUIRED)
-find_package(std_msgs REQUIRED)
+#find_package(std_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 add_subdirectory(qualisys_cpp_sdk)
