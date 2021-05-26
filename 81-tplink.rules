@@ -1,0 +1,3 @@
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2357", ATTRS{idProduct}=="011e", TAG+="uaccess", TAG+="systemd", ENV{SYSTEMD_WANTS}="mocap_pose.service"
+
+SUBSYSTEM=="usb", ATTRS{idVendor}=="2357", ATTRS{idProduct}=="011e", MODE="0666", GROUP="plugdev"
