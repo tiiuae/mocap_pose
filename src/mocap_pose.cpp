@@ -38,6 +38,18 @@ struct MocapPose::Impl
     std::atomic_bool worker_thread_running{};
     void WorkerThread();
 
+    Eigen::Vector3f FixNans(Eigen::Vector3f vec)
+    {
+        if (std::isnan(vec[0]) || std::isnan(vec[1]) || std::isnan(vec[0]))
+        {
+            return Eigen::Vector3f(0, 0, 0);
+        }
+        else
+        {
+            return vec;
+        }
+    }
+
     px4_msgs::msg::SensorGps PrepareGpsMessage(const Eigen::Vector3f& position,
                                                const Eigen::Quaternionf& q,
                                                const rclcpp::Time timestamp)
@@ -59,22 +71,22 @@ struct MocapPose::Impl
         {
             velocity = (position - last_position) / (timestamp.seconds() - last_timestamp.seconds());
         }
+        velocity = FixNans(velocity);
 
         // filter velocity, as it's too noisy
         const float avg_factor = 0.1F;
-        if (std::isnan(last_velocity[0]) || std::isnan(last_velocity[1]) || std::isnan(last_velocity[0]))
-        {
-            last_velocity = Eigen::Vector3f(0, 0, 0);
-        }
-
         velocity = velocity * avg_factor + last_velocity * (1.F - avg_factor);
+        velocity = FixNans(velocity);
 
         last_timestamp = timestamp;
         last_position = position;
         last_velocity = velocity;
 
         const auto velocity_corrected = north_correction * velocity;
-        const std::uint64_t timecode = timestamp.nanoseconds();
+        const uint64_t timecode =
+            std::chrono::time_point_cast<std::chrono::microseconds>(std::chrono::steady_clock::now())
+                .time_since_epoch()
+                .count();
 
         const double siny_cosp = 2.0 * (q.w() * q.z() + q.x() * q.y());
         const double cosy_cosp = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
@@ -102,8 +114,7 @@ struct MocapPose::Impl
         sensor_gps.cog_rad = atan2(velocity_corrected[0], velocity_corrected[1]);
         sensor_gps.vel_ned_valid = 1;
 
-        sensor_gps.time_utc_usec = timecode / 1000ULL;
-
+        sensor_gps.time_utc_usec = timestamp.nanoseconds() / 1000ULL;  // system time (UTF) in millis
         sensor_gps.satellites_used = 16;
         sensor_gps.heading = heading_rad;
         sensor_gps.heading_offset = 0.0f;
@@ -139,6 +150,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
         impl_->publishing_timestep = 1.0 / frequency;
     }
 
+    RCLCPP_INFO(this->get_logger(), "Looking for body with name: %s", impl_->bodyName);
     RCLCPP_INFO(this->get_logger(), "Frequency: %lf, frame_delay: %lf", frequency, impl_->publishing_timestep);
 
     impl_->north_offset = M_PI * (n_off / 180.0);
@@ -264,7 +276,7 @@ void MocapPose::WorkerThread()
         }
 
         CRTPacket::EPacketType packetType;
-
+        bool very_first_message = false;
         if (rtProtocol.Receive(packetType, true) == CNetwork::ResponseType::success)
         {
             if (packetType == CRTPacket::PacketData)
@@ -282,28 +294,33 @@ void MocapPose::WorkerThread()
 
                         if (name == impl_->bodyName)
                         {
-                            Eigen::Vector3f Pos(fX, fY, fZ);  // in millimeters
-                            Pos = Pos / 1000.F;               // now in meters
-                            Eigen::Map<Eigen::Matrix3f> R(rotation);
-                            Eigen::Quaternionf Q(R);
+                            // convert millimeters into meters
+                            const Eigen::Vector3f Pos = Eigen::Vector3f(fX, fY, fZ) / 1000.F;
+                            const Eigen::Map<Eigen::Matrix3f> R(rotation);
+                            const Eigen::Quaternionf Q(R);
 
                             RCLCPP_INFO(this->get_logger(),
                                         "Pos: %9.3f %9.3f %9.3f  Quat: %6.3f %6.3f %6.3f %6.3f",
                                         Pos[0],
                                         Pos[1],
                                         Pos[2],
-                                        Q.coeffs()[0],
-                                        Q.coeffs()[1],
-                                        Q.coeffs()[2],
-                                        Q.coeffs()[3]);
+                                        Q.w(),
+                                        Q.x(),
+                                        Q.y(),
+                                        Q.z());
 
                             const auto timestamp = rclcpp::Clock().now();
                             const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp);
                             const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
                                                           impl_->publishing_timestep) <= timestamp.seconds();
-                            const bool very_first_message = impl_->last_published_timestamp.nanoseconds() == 0;
 
-                            if (very_first_message || time_to_publish)
+                            const bool translation_is_valid =
+                                !std::isnan(Pos[0]) && !std::isnan(Pos[1]) && !std::isnan(Pos[2]);
+                            const bool rotation_is_valid =
+                                !std::isnan(Q.w()) && !std::isnan(Q.x()) && !std::isnan(Q.y()) && !std::isnan(Q.z());
+                            const bool data_is_valid = translation_is_valid && rotation_is_valid;
+
+                            if ((data_is_valid) && (very_first_message || time_to_publish))
                             {
                                 RCLCPP_INFO(this->get_logger(),
                                             "Publish GPS at time %lf, previous_time: %lf",
@@ -312,6 +329,7 @@ void MocapPose::WorkerThread()
 
                                 impl_->publisher->publish(gps_msg);
                                 impl_->last_published_timestamp = timestamp;
+                                very_first_message = false;
                             }
                         }
                     }

@@ -19,7 +19,7 @@
   <arg name="freq" default="10.0"/>
   <arg name="n_off" default="0.0"/>
   <arg name="address" default="192.168.43.89"/>
-  <arg name="name" default="sad04"/>
+  <arg name="name" default="$(env DRONE_DEVICE_ID)"/>
 
   <node name="mocap_pose" pkg="mocap_pose" exec="mocap_pose_node" namespace='$(env DRONE_DEVICE_ID)'>
     <param name="home_lat" value="$(var lat)"/>
@@ -29,7 +29,7 @@
     <param name="north_offset" value="$(var n_off)"/>
     <param name="server_address" value="$(var address)"/>
     <param name="body_name" value="$(var name)"/>
-
   </node>
+
 </launch>
 
