@@ -145,7 +145,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     this->declare_parameter<double>("north_offset", 0.0);
     this->declare_parameter<double>("frequency", 10.0);
     this->declare_parameter<int>("velocity_type", 1);
-    this->declare_parameter<std::string>("server_address", "192.168.0.169");
+    this->declare_parameter<std::string>("server_address", "172.18.32.111");
     this->declare_parameter<std::string>("body_name", "sad07");
 
     double n_off = 0.0, frequency = 0.0;
