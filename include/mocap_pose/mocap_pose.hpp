@@ -12,9 +12,9 @@ class MocapPose : public rclcpp::Node
 public:
     MocapPose();
     ~MocapPose();
+    void Stop();
 
 private:
-    //void Control(const std_msgs::msg::String::SharedPtr msg) const;
 
     void WorkerThread();
     struct Impl;
