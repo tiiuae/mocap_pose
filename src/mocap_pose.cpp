@@ -24,8 +24,11 @@ struct MocapPose::Impl
 
     // "Home" point on Earth, from where we "linearize" our coordinates
     geodesy::UTMPoint home;
+    // step in [sec] between publishing (setup with frequency/FPS parameter)
+    double publishing_timestep = 0.0;
 
     rclcpp::Time last_timestamp{};
+    rclcpp::Time last_published_timestamp{};
     Eigen::Vector3f last_position{};
     Eigen::Vector3f last_velocity{};
 
@@ -138,21 +141,29 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     declare_parameter<double>("home_lat", 61.50341);
     declare_parameter<double>("home_lon", 23.77509);
     declare_parameter<double>("home_alt", 110.0);
+    declare_parameter<double>("frequency", 10.0);
     declare_parameter<int>("velocity_type", 1);
     declare_parameter<std::string>("server_address", "172.18.32.20");
     declare_parameter<std::string>("body_name", "sad07");
 
+    double frequency = 0.0;
     auto point = geographic_msgs::msg::GeoPoint();
     get_parameter("home_lat", point.latitude);
     get_parameter("home_lon", point.longitude);
     get_parameter("home_alt", point.altitude);
     get_parameter("server_address", impl_->serverAddress);
     get_parameter("body_name", impl_->bodyName);
+    get_parameter("frequency", frequency);
     get_parameter("velocity_type", impl_->velocity_type);
     impl_->home = geodesy::UTMPoint(point);
+    impl_->publishing_timestep = (frequency > 0.0) ? 1.0 / frequency : 0.0;
 
     RCLCPP_INFO(get_logger(), "Looking for body with name: %s", impl_->bodyName.c_str());
-    RCLCPP_INFO(get_logger(), "Velocity type: %d", impl_->velocity_type);
+    RCLCPP_INFO(this->get_logger(),
+                "Frequency: %lf, delay: %lf, Velocity type: %d",
+                frequency,
+                impl_->publishing_timestep,
+                impl_->velocity_type);
     RCLCPP_INFO(get_logger(),
                 "Initial Home coordinates: lat: %lf, lon: %lf, alt: %lf",
                 point.latitude,
@@ -182,13 +193,14 @@ void MocapPose::WorkerThread()
         bool dataAvailable = false;
         bool streamFrames = false;
         unsigned short udpPort = 6734;
-
+        bool very_first_message = true;
         while (impl_->worker_thread_running)
         {
             auto now = std::chrono::system_clock::now();
             if (now > latest_succesfull_receive + std::chrono::seconds(10))
             {
-                RCLCPP_WARN(get_logger(), "Have not heard from MOCAP for more than 10 secs - rebooting receiver");
+                RCLCPP_WARN(get_logger(),
+                            "Have not succesfully received for more than 10 secs - restarting receiver");
                 break;
             }
 
@@ -206,8 +218,13 @@ void MocapPose::WorkerThread()
                                 impl_->serverAddress.c_str(),
                                 impl_->basePort,
                                 rtProtocol.GetErrorString());
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
+                }
+                else
+                {
+                    RCLCPP_INFO(
+                        get_logger(), "Succesfully connected to %s:%d", impl_->serverAddress.c_str(), impl_->basePort);
                 }
             }
 
@@ -215,9 +232,13 @@ void MocapPose::WorkerThread()
             {
                 if (!rtProtocol.Read6DOFSettings(dataAvailable))
                 {
-                    RCLCPP_WARN(get_logger(), "rtProtocol.Read6DOFSettings: %s", rtProtocol.GetErrorString());
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    RCLCPP_WARN(get_logger(), "6DoF data is not available: %s", rtProtocol.GetErrorString());
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
+                }
+                else
+                {
+                    RCLCPP_INFO(get_logger(), "6DoF data is available (server configured well)");
                 }
             }
 
@@ -226,9 +247,13 @@ void MocapPose::WorkerThread()
                 if (!rtProtocol.StreamFrames(
                         CRTProtocol::RateAllFrames, 0, udpPort, nullptr, CRTProtocol::cComponent6d))
                 {
-                    RCLCPP_WARN(get_logger(), "rtProtocol.StreamFrames: %s", rtProtocol.GetErrorString());
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    RCLCPP_WARN(get_logger(), "Cannot start data streaming: %s", rtProtocol.GetErrorString());
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
+                }
+                else
+                {
+                    RCLCPP_INFO(get_logger(), "Data streaming succesfully started");
                 }
                 streamFrames = true;
             }
@@ -243,6 +268,7 @@ void MocapPose::WorkerThread()
                     float rotation[9];
 
                     CRTPacket* rtPacket = rtProtocol.GetRTPacket();
+                    bool body_found = false;
 
                     for (unsigned int i = 0; i < rtPacket->Get6DOFBodyCount(); i++)
                     {
@@ -252,13 +278,27 @@ void MocapPose::WorkerThread()
 
                             if (name == impl_->bodyName)
                             {
+                                body_found = true;
+
                                 // convert millimeters into meters
                                 const Eigen::Vector3f Pos = Eigen::Vector3f(fX, fY, fZ) / 1000.F;
                                 const Eigen::Map<Eigen::Matrix3f> R(rotation);
                                 const Eigen::Quaternionf Q(R);
 
+                                RCLCPP_INFO(this->get_logger(),
+                                            "Position: [%6.2f %6.2f %6.2f]\t Quaternion: [%6.3f %6.3f %6.3f %6.3f]",
+                                            Pos[0],
+                                            Pos[1],
+                                            Pos[2],
+                                            Q.w(),
+                                            Q.x(),
+                                            Q.y(),
+                                            Q.z());
+
                                 const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp);
+                                const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
+                                                              impl_->publishing_timestep) <= timestamp.seconds();
 
                                 const bool translation_is_valid =
                                     !std::isnan(Pos[0]) && !std::isnan(Pos[1]) && !std::isnan(Pos[2]);
@@ -270,19 +310,16 @@ void MocapPose::WorkerThread()
 
                                 if (data_is_valid)
                                 {
-                                    RCLCPP_INFO(get_logger(),
-                                                "Pos: (%5.3f %5.3f %5.3f)  Quat: [%4.3f %4.3f %4.3f %4.3f] published "
-                                                "at time %lf",
-                                                Pos[0],
-                                                Pos[1],
-                                                Pos[2],
-                                                Q.w(),
-                                                Q.x(),
-                                                Q.y(),
-                                                Q.z(),
-                                                timestamp.seconds());
-
-                                    impl_->publisher->publish(gps_msg);
+                                    if (very_first_message || time_to_publish)
+                                    {
+                                        RCLCPP_INFO(this->get_logger(),
+                                                    "Publish GPS at time %lf, previous_time: %lf",
+                                                    timestamp.seconds(),
+                                                    impl_->last_published_timestamp.seconds());
+                                        impl_->publisher->publish(gps_msg);
+                                        impl_->last_published_timestamp = timestamp;
+                                        very_first_message = false;
+                                    }
                                 }
                                 else
                                 {
@@ -290,6 +327,13 @@ void MocapPose::WorkerThread()
                                 }
                             }
                         }
+                    }
+
+                    if (!body_found)
+                    {
+                        RCLCPP_WARN(get_logger(),
+                                    "Cannot find body named \"%s\" in Qualisys Data Stream",
+                                    impl_->bodyName.c_str());
                     }
                 }
             }
