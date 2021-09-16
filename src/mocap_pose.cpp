@@ -144,7 +144,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     declare_parameter<double>("frequency", 10.0);
     declare_parameter<int>("velocity_type", 1);
     declare_parameter<std::string>("server_address", "172.18.32.20");
-    declare_parameter<std::string>("body_name", "sad07");
+    declare_parameter<std::string>("body_name", "sad");
 
     double frequency = 0.0;
     auto point = geographic_msgs::msg::GeoPoint();
@@ -181,6 +181,15 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("SensorGps_PubSubTopic", 10);
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
+}
+
+void MocapPose::Stop()
+{
+    impl_->worker_thread_running = false;
+    if(impl_->worker_thread.joinable())
+    {
+        impl_->worker_thread.join();
+    }
 }
 
 void MocapPose::WorkerThread()
