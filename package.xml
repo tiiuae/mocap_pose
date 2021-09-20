@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>mocap_pose</name>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
   <description>Converts Qualisys Mocap pose into ROS2 / PX4 GPS message</description>
   <maintainer email="sergey.smirnov@unikie.com">Sergey Smirnov</maintainer>
   <license>BSD</license>

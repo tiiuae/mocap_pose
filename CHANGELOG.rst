@@ -1,6 +1,8 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package mocap_pose
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+* 0.1.1 : Reduce linux socket::connect() timeout down to 10 sec
+* 0.1.0 : extra loop to reset local CRTProtocol structure, if wasn't successful receive for 10 sec
 
 Forthcoming
 -----------
@@ -12,5 +14,4 @@ Forthcoming
 * Adding debian pkg stuff + other small fixes
 * Initial Commit for mocap_pose
 * add qualisys submodule
-* first commit
 * Contributors: Sergey Smirnov
