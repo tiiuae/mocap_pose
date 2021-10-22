@@ -178,7 +178,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
                 impl_->home.zone,
                 impl_->home.band);
 
-    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("SensorGps_PubSubTopic", 10);
+    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("fmu/sensor_gps/in", 10);
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
