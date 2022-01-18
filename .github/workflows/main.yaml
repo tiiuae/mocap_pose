@@ -14,7 +14,6 @@ jobs:
       - name: Checkout mocap_pose
         uses: actions/checkout@v2
         with:
-          path: mocap_pose
           submodules: recursive
 
       - name: Checkout ci-scripts
@@ -23,10 +22,14 @@ jobs:
           repository: tiiuae/fogsw-ci-scripts
           path: fogsw-ci-scripts
 
-      # Run docker build
-      - name: Run fog-sw docker build
+      - name: Build .deb
         run: |
           set -eux
           mkdir bin
           cd fogsw-ci-scripts/
-          ./generate_deb.sh ../mocap_pose ../bin/
+          ./generate_deb.sh .. ../bin/
+
+          # generate_deb.sh replaces Dockerfile from our repo with its own so we got to go and repair
+          # it because otherwise the following Docker build would use the incorrect Dockerfile
+          cd ..
+          git checkout HEAD -- Dockerfile
