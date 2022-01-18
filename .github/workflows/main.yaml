@@ -28,6 +28,5 @@ jobs:
         run: |
           set -eux
           mkdir bin
-          pushd fogsw-ci-scripts
+          cd fogsw-ci-scripts/
           ./generate_deb.sh ../mocap_pose ../bin/
-          popd
