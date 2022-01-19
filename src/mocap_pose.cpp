@@ -33,6 +33,12 @@ struct MocapPose::Impl
     Eigen::Vector3f last_velocity{};
 
     rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr publisher;
+
+    std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lat;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lon;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_alt;
+
     std::thread worker_thread;
     std::atomic_bool worker_thread_running{};
 
@@ -132,6 +138,28 @@ struct MocapPose::Impl
 
         return sensor_gps;
     }
+
+    void ParamCallback(const rclcpp::Parameter & p)
+    {
+        RCLCPP_INFO(
+            this->get_logger(), "cb: Received an update to parameter \"%s\" of type %s",
+            p.get_name().c_str(),
+            p.get_type_name().c_str());
+
+        mutex
+        auto point = geodesy::toMsg(home);
+        if (p.get_name().compare("home_lat") == 0) {
+            point.latitude = p.as_double();
+        } else if (p.get_name().compare("home_lon") == 0) {
+            point.longitude = p.as_double();
+        } else if (p.get_name().compare("home_alt") == 0) {
+            point.altitude = p.as_double();
+        }
+
+
+        home = geodesy::UTMPoint(point);
+    }
+
 };
 
 MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
@@ -177,6 +205,11 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
                 impl_->home.altitude,
                 impl_->home.zone,
                 impl_->home.band);
+
+    impl_->param_subscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
+    impl_->cb_handle_lat = param_subscriber_->add_parameter_callback("home_lat", impl_->ParamCallback);
+    impl_->cb_handle_lon = param_subscriber_->add_parameter_callback("home_lon", impl_->ParamCallback);
+    impl_->cb_handle_alt = param_subscriber_->add_parameter_callback("home_alt", impl_->ParamCallback);
 
     impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("fmu/sensor_gps/in", 10);
     impl_->worker_thread_running = true;
