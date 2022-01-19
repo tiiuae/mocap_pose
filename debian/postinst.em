@@ -10,3 +10,5 @@ SUBSYSTEM=="usb", ATTRS{idVendor}=="2357", ATTRS{idProduct}=="011e", MODE="0666"
 EOF
 
 chmod 644 /etc/udev/rules.d/81-tplink.rules
+
+exit 0
