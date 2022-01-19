@@ -19,7 +19,7 @@ RUN if [ -e /$PACKAGE_NAME/deps_ws ]; then \
     elif [ -e /opt/ros/${ROS_DISTRO}/setup.sh ]; then \
         . /opt/ros/${ROS_DISTRO}/setup.sh && \
         colcon build; \
-    fi 
+    fi
 
 RUN sed --in-place \
       's|^source .*|source "/'$PACKAGE_NAME'/main_ws/install/setup.bash"|' \
