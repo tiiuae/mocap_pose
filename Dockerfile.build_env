@@ -28,7 +28,6 @@ RUN mkdir -p /$PACKAGE_NAME/packaging
 
 COPY packaging/rosdep.yaml* packaging/rosdep.sh packaging/build_deps.sh /$PACKAGE_NAME/packaging/
 COPY underlay.repos package.xml /$PACKAGE_NAME/packaging/
-COPY entrypoint.sh* /$PACKAGE_NAME/
 
 RUN /$PACKAGE_NAME/packaging/rosdep.sh /$PACKAGE_NAME
 
