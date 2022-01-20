@@ -17,7 +17,6 @@ jobs:
       - name: Checkout mocap_pose
         uses: actions/checkout@v2
         with:
-          path: mocap_pose
           submodules: recursive
 
       # Run docker build
@@ -29,9 +28,7 @@ jobs:
         run: |
           set -eux
           mkdir bin
-          pushd mocap_pose
-          ./build.sh ../bin/
-          popd
+          ./build.sh ./bin/
 
       - name: Install jfrog CLI tool
         env:
@@ -93,8 +90,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v2
         with:
-          push: ${{ github.event_name == 'push' }}
           context: .
-          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
