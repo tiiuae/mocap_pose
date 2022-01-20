@@ -20,7 +20,7 @@ jobs:
           - 5000:5000
     steps:
 
-      - name: Checkout moca_pose
+      - name: Checkout mocap_pose
         uses: actions/checkout@v2
         with:
           submodules: recursive
@@ -69,6 +69,7 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             PACKAGE_NAME=mocap_pose
             ROS_DISTRO=galactic
