@@ -10,6 +10,6 @@ ENV INDOOR_ORIGO_ALTITUDE=110.0
 
 ENTRYPOINT ros-with-env ros2 launch mocap_pose mocap_pose.launch address:=$INDOOR_SERVER_IP_ADDRESS lat:=$INDOOR_ORIGO_LATITUDE lon:=$INDOOR_ORIGO_LONGITUDE alt:=$INDOOR_ORIGO_ALTITUDE
 
-COPY bin/ros-foxy-mocap-pose_*.deb /tmp/mocap-pose.deb
+COPY bin/ros-galactic-mocap-pose_*.deb /tmp/mocap-pose.deb
 
 RUN dpkg -i /tmp/mocap-pose.deb && rm /tmp/mocap-pose.deb
