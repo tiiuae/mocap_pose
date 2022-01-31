@@ -11,6 +11,10 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <fstream>
+#include <string>
+
+
 using namespace std::chrono;
 
 struct MocapPose::Impl
@@ -22,6 +26,7 @@ struct MocapPose::Impl
     bool bigEndian = false;
     std::string bodyName = "drone";
     int velocity_type = 1;
+    std::string param_file_name = "";
 
     // "Home" point on Earth, from where we "linearize" our coordinates
     geodesy::UTMPoint home;
@@ -156,6 +161,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     declare_parameter<int>("velocity_type", 1);
     declare_parameter<std::string>("server_address", "172.18.32.20");
     declare_parameter<std::string>("body_name", "sad");
+    declare_parameter<std::string>("param_file_name", "/tmp/mocap_params.txt");
 
     double frequency = 0.0;
     auto point = geographic_msgs::msg::GeoPoint();
@@ -166,6 +172,36 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
     get_parameter("body_name", impl_->bodyName);
     get_parameter("frequency", frequency);
     get_parameter("velocity_type", impl_->velocity_type);
+    get_parameter("param_file_name", impl_->param_file_name);
+
+    // Check persistent parameter storage
+    {
+        std::ifstream infile(impl_->param_file_name.c_str());
+        if (infile.good()) {
+            RCLCPP_INFO(get_logger(), "Param storage file found: %s", impl_->param_file_name.c_str());
+            double values[3] = {0,0,0};
+            std::string line;
+            infile >> line;
+            for( int i=0; i<3; i++) {
+                size_t pos = line.find(",");
+                if (pos) {
+                    values[i] = std::stod(line.substr(0, pos));
+                } else {
+                    values[i] = std::stod(line);
+                }
+                line.erase(0, pos+1);
+            }
+            point.latitude = values[0];
+            point.longitude = values[1];
+            point.altitude = values[2];
+            RCLCPP_INFO(get_logger(),
+                "Load stored coordinates: lat: %lf, lon: %lf, alt: %lf",
+                point.latitude,
+                point.longitude,
+                point.altitude);
+        }
+    }
+
     impl_->home = geodesy::UTMPoint(point);
     impl_->publishing_timestep = (frequency > 0.0) ? 1.0 / frequency : 0.0;
 
@@ -209,6 +245,14 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
             point.altitude = p.as_double();
         }
         this->impl_->home = geodesy::UTMPoint(point);
+        std::ofstream outfile(this->impl_->param_file_name.c_str());
+        RCLCPP_INFO(this->get_logger(), "Try to open file %s", this->impl_->param_file_name.c_str());
+        if (outfile.good()) {
+            RCLCPP_INFO(this->get_logger(), "Store coordinates to file %s", this->impl_->param_file_name.c_str());
+            outfile << point.latitude << "," << point.longitude << "," << point.altitude;
+        } else {
+            RCLCPP_ERROR(this->get_logger(), "Failed to open file %s for writing", this->impl_->param_file_name.c_str());
+        }
     };
 
     impl_->param_subscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
