@@ -2,7 +2,7 @@
 
 ```
 $ sudo apt update
-$ sudo apt install ros-foxy-geodesy
+$ sudo apt install ros-galactic-geodesy
 ```
 
 ## Build
