@@ -10,6 +10,7 @@
 #include <chrono>
 #include <sstream>
 #include <thread>
+#include <mutex>
 using namespace std::chrono;
 
 struct MocapPose::Impl
@@ -33,8 +34,15 @@ struct MocapPose::Impl
     Eigen::Vector3f last_velocity{};
 
     rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr publisher;
+
+    std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lat;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lon;
+    std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_alt;
+
     std::thread worker_thread;
     std::atomic_bool worker_thread_running{};
+    std::mutex home_coord_mutex;
 
     Eigen::Vector3f FixNans(Eigen::Vector3f vec)
     {
@@ -132,6 +140,9 @@ struct MocapPose::Impl
 
         return sensor_gps;
     }
+
+
+
 };
 
 MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
@@ -177,6 +188,33 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
                 impl_->home.altitude,
                 impl_->home.zone,
                 impl_->home.band);
+
+    auto callback = [this](const rclcpp::Parameter & p) {
+        double value = NAN;
+        if (p.get_type_name().compare("double") == 0) {
+            value = p.as_double();
+        }
+        RCLCPP_INFO(this->get_logger(), "Param set cb: Parameter updated \"%s\": %f",
+            p.get_name().c_str(),
+            value
+        );
+
+        std::unique_lock<std::mutex> lock(this->impl_->home_coord_mutex);
+        auto point = geodesy::toMsg(this->impl_->home);
+        if (p.get_name().compare("home_lat") == 0) {
+            point.latitude = p.as_double();
+        } else if (p.get_name().compare("home_lon") == 0) {
+            point.longitude = p.as_double();
+        } else if (p.get_name().compare("home_alt") == 0) {
+            point.altitude = p.as_double();
+        }
+        this->impl_->home = geodesy::UTMPoint(point);
+    };
+
+    impl_->param_subscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
+    impl_->cb_handle_lat = impl_->param_subscriber->add_parameter_callback("home_lat", callback);
+    impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
+    impl_->cb_handle_alt = impl_->param_subscriber->add_parameter_callback("home_alt", callback);
 
     impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("fmu/sensor_gps/in", 10);
     impl_->worker_thread_running = true;
