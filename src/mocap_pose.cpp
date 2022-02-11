@@ -327,6 +327,13 @@ void MocapPose::WorkerThread()
                             {
                                 body_found = true;
 
+                                const auto timestamp = rclcpp::Clock().now();
+                                const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
+                                                              impl_->publishing_timestep) <= timestamp.seconds();
+                                if (!time_to_publish && !very_first_message){
+                                    continue;
+                                }
+
                                 // convert millimeters into meters
                                 const Eigen::Vector3f Pos = Eigen::Vector3f(fX, fY, fZ) / 1000.F;
                                 const Eigen::Map<Eigen::Matrix3f> R(rotation);
@@ -342,10 +349,7 @@ void MocapPose::WorkerThread()
                                             Q.y(),
                                             Q.z());
 
-                                const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp);
-                                const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
-                                                              impl_->publishing_timestep) <= timestamp.seconds();
 
                                 const bool translation_is_valid =
                                     !std::isnan(Pos[0]) && !std::isnan(Pos[1]) && !std::isnan(Pos[2]);
