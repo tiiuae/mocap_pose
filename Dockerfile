@@ -1,33 +1,16 @@
-# fog-sw BUILDER
-ARG FROM_IMAGE
-FROM $FROM_IMAGE as fog-sw-builder
-ARG ROS_DISTRO="galactic"
-ARG UID=1000
-ARG GID=1000
-ARG PACKAGE_NAME
+# Use one base image for all the components.
+# First tests can be done using debian packages of release 6.0.1.
+FROM ghcr.io/tiiuae/fog-ros-baseimage:devel
 
-WORKDIR /$PACKAGE_NAME/main_ws
-USER root
-ADD . /$PACKAGE_NAME/main_ws/src
-RUN chown -R builder:builder /$PACKAGE_NAME/main_ws
+RUN apt install -y \
+	ros-${ROS_DISTRO}-mocap-pose=0.1.1-47~git20220120.d624ade
 
-USER builder
+USER runner
 
-RUN if [ -e /$PACKAGE_NAME/deps_ws ]; then \
-        . /$PACKAGE_NAME/deps_ws/install/setup.sh && \
-        colcon build; \
-    elif [ -e /opt/ros/${ROS_DISTRO}/setup.sh ]; then \
-        . /opt/ros/${ROS_DISTRO}/setup.sh && \
-        colcon build; \
-    fi
-
-RUN sed --in-place \
-      's|^source .*|source "/'$PACKAGE_NAME'/main_ws/install/setup.bash"|' \
-      /$PACKAGE_NAME/entrypoint.sh && \  
-        chmod +x /$PACKAGE_NAME/entrypoint.sh
-
-ENV PACKAGE_NAME $PACKAGE_NAME
-ENV RMW_IMPLEMENTATION rmw_fastrtps_cpp
-
-WORKDIR /$PACKAGE_NAME
-ENTRYPOINT "/"$PACKAGE_NAME"/entrypoint.sh"
+# Indoor server settings should be available via ros-with-env wrapper.
+# Possible solution to add /enclave/indoor_settings?
+ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
+	address:=$INDOOR_SERVER_IP_ADDRESS \
+	lat:=$INDOOR_ORIGO_LATITUDE \
+	lon:=$INDOOR_ORIGO_LONGITUDE \
+	alt:=$INDOOR_ORIGO_ALTITUDE

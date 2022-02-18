@@ -30,7 +30,7 @@ In this case you will neeed to have available fog-ros-base-image in your local d
 ### Build
 
 ```
-$ docker build -t tii-mocap-pose-runner -f Dockerfile.runtime .
+$ docker build -t tii-mocap-pose-runner .
 ```
 
 ### Run
