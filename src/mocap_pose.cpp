@@ -84,17 +84,11 @@ struct MocapPose::Impl
         last_position = position;
         last_velocity = velocity;
 
-        // PX4 uses "steady_clock" timer, while Qualisys Mocap data comes with "system_clock" timestamps
-        // Here we convert one to another, such that PX4 could use our message
-        const auto system_now = time_point_cast<microseconds>(system_clock::now()).time_since_epoch().count();
-        const auto steady_now = time_point_cast<microseconds>(steady_clock::now()).time_since_epoch().count();
-        steady_clock::rep steady_stamp = timestamp.nanoseconds() / 1000ULL - system_now + steady_now;
-
         const double siny_cosp = 2.0 * (q.w() * q.z() + q.x() * q.y());
         const double cosy_cosp = 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
         const double heading_rad = -atan2(siny_cosp, cosy_cosp);
 
-        sensor_gps.timestamp = steady_stamp;
+        sensor_gps.timestamp = timestamp.nanoseconds() / 1000ULL;
         sensor_gps.lat = (uint32_t)std::round(point.latitude * 10000000);
         sensor_gps.lon = (uint32_t)std::round(point.longitude * 10000000);
         sensor_gps.alt = (uint32_t)std::round(point.altitude * 1000);
@@ -134,7 +128,7 @@ struct MocapPose::Impl
     }
 };
 
-MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl())
+MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTimestampDiff(INT64_MAX)
 {
     RCLCPP_INFO(this->get_logger(), "MocapPose (Motion Capture Positioning Service)");
 
@@ -190,6 +184,21 @@ void MocapPose::Stop()
     {
         impl_->worker_thread.join();
     }
+}
+
+rclcpp::Time MocapPose::QualisysToRosTimestamp(unsigned long long ts) {
+
+    uint64_t now = time_point_cast<microseconds>(steady_clock::now()).time_since_epoch().count();
+
+    // Just assume minimum communication latency of 0, it should be neglible
+    const uint64_t min_latency = 0;
+    int64_t diff = now - ts;
+
+    if (diff < minTimestampDiff) {
+        minTimestampDiff = diff;
+    }
+
+    return rclcpp::Time((ts + minTimestampDiff - min_latency) * 1000);
 }
 
 void MocapPose::WorkerThread()
@@ -305,7 +314,8 @@ void MocapPose::WorkerThread()
                                             Q.z());
 
                                 const auto timestamp = rclcpp::Clock().now();
-                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp);
+                                const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
+                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp);
                                 const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
                                                               impl_->publishing_timestep) <= timestamp.seconds();
 
@@ -322,9 +332,10 @@ void MocapPose::WorkerThread()
                                     if (very_first_message || time_to_publish)
                                     {
                                         RCLCPP_INFO(this->get_logger(),
-                                                    "Publish GPS at time %lf, previous_time: %lf",
+                                                    "Publish GPS at time %lf, previous_time: %lf , gps ts %lf",
                                                     timestamp.seconds(),
-                                                    impl_->last_published_timestamp.seconds());
+                                                    impl_->last_published_timestamp.seconds(),
+                                                    gps_timestamp.seconds());
                                         impl_->publisher->publish(gps_msg);
                                         impl_->last_published_timestamp = timestamp;
                                         very_first_message = false;
