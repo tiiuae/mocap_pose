@@ -302,7 +302,7 @@ void MocapPose::WorkerThread()
                                 const Eigen::Vector3f Pos = Eigen::Vector3f(fX, fY, fZ) / 1000.F;
                                 const Eigen::Map<Eigen::Matrix3f> R(rotation);
                                 const Eigen::Quaternionf Q(R);
-
+#if 0
                                 RCLCPP_INFO(this->get_logger(),
                                             "Position: [%6.2f %6.2f %6.2f]\t Quaternion: [%6.3f %6.3f %6.3f %6.3f]",
                                             Pos[0],
@@ -312,7 +312,7 @@ void MocapPose::WorkerThread()
                                             Q.x(),
                                             Q.y(),
                                             Q.z());
-
+#endif
                                 const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
                                 const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp);
