@@ -58,7 +58,8 @@ struct MocapPose::Impl
 
     px4_msgs::msg::SensorGps PrepareGpsMessage(const Eigen::Vector3f& position,
                                                const Eigen::Quaternionf& q,
-                                               const rclcpp::Time& timestamp)
+                                               const rclcpp::Time& timestamp,
+                                               const rclcpp::Time& utc_timestamp)
     {
         px4_msgs::msg::SensorGps sensor_gps{};
 
@@ -108,7 +109,7 @@ struct MocapPose::Impl
         sensor_gps.hdop = 0.0f;
         sensor_gps.vdop = 0.0f;
 
-        sensor_gps.time_utc_usec = timestamp.nanoseconds() / 1000ULL;  // system time (UTF) in millis
+        sensor_gps.time_utc_usec = utc_timestamp.nanoseconds() / 1000ULL;  // system time (UTF) in millis
         sensor_gps.satellites_used = 16;
         sensor_gps.heading = heading_rad;
         sensor_gps.heading_offset = 0.0f;
@@ -353,7 +354,7 @@ void MocapPose::WorkerThread()
 #endif
                                 const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
-                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp);
+                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp, timestamp);
                                 const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
                                                               impl_->publishing_timestep) <= timestamp.seconds();
 
