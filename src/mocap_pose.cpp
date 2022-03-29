@@ -244,7 +244,7 @@ void MocapPose::WorkerThread()
 {
     while (impl_->worker_thread_running)
     {
-        auto latest_succesfull_receive = std::chrono::system_clock::now();
+        auto latest_succesfull_receive = rclcpp::Clock().now();
         CRTProtocol rtProtocol;
 
         bool dataAvailable = false;
@@ -253,8 +253,8 @@ void MocapPose::WorkerThread()
         bool very_first_message = true;
         while (impl_->worker_thread_running)
         {
-            auto now = std::chrono::system_clock::now();
-            if (now > latest_succesfull_receive + std::chrono::seconds(10))
+            auto now = rclcpp::Clock().now();
+            if (now > latest_succesfull_receive + rclcpp::Duration(10,0))
             {
                 RCLCPP_WARN(get_logger(),
                             "Have not succesfully received for more than 10 secs - restarting receiver");
@@ -364,7 +364,7 @@ void MocapPose::WorkerThread()
                                                                !std::isnan(Q.y()) && !std::isnan(Q.z());
                                 const bool data_is_valid = translation_is_valid && rotation_is_valid;
 
-                                latest_succesfull_receive = std::chrono::system_clock::now();
+                                latest_succesfull_receive = rclcpp::Clock().now();
 
                                 if (data_is_valid)
                                 {
