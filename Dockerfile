@@ -12,7 +12,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-cd79949
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-7857f7d
 
 ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch
 
