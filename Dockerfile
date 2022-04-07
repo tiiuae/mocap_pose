@@ -14,7 +14,11 @@ RUN /packaging/build.sh
 
 FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-7857f7d
 
-ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch
+ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
+	address:=$INDOOR_SERVER_IP_ADDRESS \
+	lat:=$INDOOR_ORIGO_LATITUDE \
+	lon:=$INDOOR_ORIGO_LONGITUDE \
+	alt:=$INDOOR_ORIGO_ALTITUDE
 
 COPY --from=builder /main_ws/ros-*-mocap-pose_*_amd64.deb /mocap-pose.deb
 
