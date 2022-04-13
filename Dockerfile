@@ -12,7 +12,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-7857f7d
+FROM ghcr.io/tiiuae/fog-ros-baseimage:stable
 
 ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
 	address:=$INDOOR_SERVER_IP_ADDRESS \
