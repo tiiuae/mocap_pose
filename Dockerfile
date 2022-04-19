@@ -1,33 +1,24 @@
-# fog-sw BUILDER
-ARG FROM_IMAGE
-FROM $FROM_IMAGE as fog-sw-builder
-ARG ROS_DISTRO="galactic"
-ARG UID=1000
-ARG GID=1000
-ARG PACKAGE_NAME
+FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-latest AS builder
 
-WORKDIR /$PACKAGE_NAME/main_ws
-USER root
-ADD . /$PACKAGE_NAME/main_ws/src
-RUN chown -R builder:builder /$PACKAGE_NAME/main_ws
+COPY . /main_ws/src/
 
-USER builder
+# this:
+# 1) builds the application
+# 2) packages the application as .deb in /main_ws/
 
-RUN if [ -e /$PACKAGE_NAME/deps_ws ]; then \
-        . /$PACKAGE_NAME/deps_ws/install/setup.sh && \
-        colcon build; \
-    elif [ -e /opt/ros/${ROS_DISTRO}/setup.sh ]; then \
-        . /opt/ros/${ROS_DISTRO}/setup.sh && \
-        colcon build; \
-    fi
+RUN /packaging/build.sh
 
-RUN sed --in-place \
-      's|^source .*|source "/'$PACKAGE_NAME'/main_ws/install/setup.bash"|' \
-      /$PACKAGE_NAME/entrypoint.sh && \  
-        chmod +x /$PACKAGE_NAME/entrypoint.sh
+#  ▲               runtime ──┐
+#  └── build                 ▼
 
-ENV PACKAGE_NAME $PACKAGE_NAME
-ENV RMW_IMPLEMENTATION rmw_fastrtps_cpp
+FROM ghcr.io/tiiuae/fog-ros-baseimage:stable
 
-WORKDIR /$PACKAGE_NAME
-ENTRYPOINT "/"$PACKAGE_NAME"/entrypoint.sh"
+ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
+	address:=$INDOOR_SERVER_IP_ADDRESS \
+	lat:=$INDOOR_ORIGO_LATITUDE \
+	lon:=$INDOOR_ORIGO_LONGITUDE \
+	alt:=$INDOOR_ORIGO_ALTITUDE
+
+COPY --from=builder /main_ws/ros-*-mocap-pose_*_amd64.deb /mocap-pose.deb
+
+RUN dpkg -i /mocap-pose.deb && rm /mocap-pose.deb

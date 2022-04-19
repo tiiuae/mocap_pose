@@ -1,7 +1,21 @@
+Indoor GPS synthesizer for ROS from Qualisys QTM (a motion capture system)
+
+More documentation in [fog_hyper documentation](https://github.com/tiiuae/fog_hyper/blob/main/docs/mocap.md).
+
+
+## Development, debug
+
+[See documentation in container base image](https://github.com/tiiuae/fog-ros-baseimage/tree/main#development--debug-for-concrete-projects)
+
+## Outdated documentation
+
+**WARNING**: Rest of the docs are outdated regarding container-specific build/running.
+
+
 ## Install dependencies
 
 ```
-$ sudo apt update
+$ sudo apt update
 $ sudo apt install ros-galactic-geodesy
 ```
 
