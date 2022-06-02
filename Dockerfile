@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-latest AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-DP-2016-dockerfiles-pkcs-11-updates AS builder
 
 COPY . /main_ws/src/
 
@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:stable
+FROM ghcr.io/tiiuae/fog-ros-baseimage:DP-2016-dockerfiles-pkcs-11-updates
 
 ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
 	address:=$INDOOR_SERVER_IP_ADDRESS \
