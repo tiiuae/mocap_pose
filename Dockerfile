@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-3dcb78d AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-2f516bb AS builder
 
 COPY . /main_ws/src/
 
@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-3dcb78d
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-2f516bb
 
 ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
 	address:=$INDOOR_SERVER_IP_ADDRESS \
