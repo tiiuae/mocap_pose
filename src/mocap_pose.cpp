@@ -211,7 +211,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
     impl_->cb_handle_alt = impl_->param_subscriber->add_parameter_callback("home_alt", callback);
 
-    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("fmu/sensor_gps/in", 10);
+    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("/fmu/in/SensorGps", 10);
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
