@@ -354,7 +354,7 @@ void MocapPose::WorkerThread()
 #endif
                                 const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
-                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp, timestamp);
+                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp, timestamp);
                                 const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
                                                               impl_->publishing_timestep) <= timestamp.seconds();
 
