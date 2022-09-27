@@ -6,6 +6,8 @@
 #include <rclcpp/rclcpp.hpp>
 //#include <std_msgs/msg/string.hpp>
 
+const std::string kGpsSensorTopic = "/fmu/in/SensorGps";
+
 /// ROS2 Driver for Qualisys Motion Capture (Mocap) system
 /// Provides "fake GPS" messages for selected Mocap object (set up with ROS2 parameters)
 class MocapPose : public rclcpp::Node
