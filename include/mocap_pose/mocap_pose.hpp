@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <sys/types.h>
 #include <rclcpp/rclcpp.hpp>
+#include <RTProtocol.h>
 //#include <std_msgs/msg/string.hpp>
 
 const std::string kGpsSensorTopic = "/fmu/in/SensorGps";
@@ -21,6 +22,7 @@ private:
 
     rclcpp::Time QualisysToRosTimestamp(unsigned long long ts);
     void WorkerThread();
+    bool runWork(CRTProtocol* rtProtocol, bool* dataAvailable, bool* streamFrames, bool* very_first_message);
     struct Impl;
     std::unique_ptr<Impl> impl_;
     int64_t minTimestampDiff;
