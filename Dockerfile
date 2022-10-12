@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-2f516bb AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-a2b1348 AS builder
 
 COPY . /main_ws/src/
 
@@ -11,7 +11,10 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-2f516bb
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-a2b1348
+
+HEALTHCHECK --interval=5s \
+	CMD fog_health check --metric=location_update_count --diff-gte=5.0 --metrics-from=http://localhost:9090/metrics
 
 ENTRYPOINT exec ros-with-env ros2 launch mocap_pose mocap_pose.launch \
 	address:=$INDOOR_SERVER_IP_ADDRESS \
