@@ -46,7 +46,7 @@ struct MocapPose::Impl
 
     Eigen::Vector3f FixNans(Eigen::Vector3f vec)
     {
-        if (std::isnan(vec[0]) || std::isnan(vec[1]) || std::isnan(vec[0]))
+        if (std::isnan(vec[0]) || std::isnan(vec[1]) || std::isnan(vec[2]))
         {
             return Eigen::Vector3f(0, 0, 0);
         }
