@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <sys/types.h>
 #include <rclcpp/rclcpp.hpp>
+#include <diagnostic_updater/diagnostic_updater.hpp>
 //#include <std_msgs/msg/string.hpp>
 
 /// ROS2 Driver for Qualisys Motion Capture (Mocap) system

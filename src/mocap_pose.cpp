@@ -15,6 +15,7 @@
 #include <thread>
 #include <mutex>
 using namespace std::chrono;
+using DiagStatus = diagnostic_msgs::msg::DiagnosticStatus;
 
 struct MocapPose::Impl
 {
@@ -42,6 +43,7 @@ struct MocapPose::Impl
     std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lat;
     std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lon;
     std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_alt;
+    std::shared_ptr<diagnostic_updater::Updater> updater;
 
     std::thread worker_thread;
     std::atomic_bool worker_thread_running{};
@@ -59,6 +61,20 @@ struct MocapPose::Impl
         else
         {
             return vec;
+        }
+    }
+
+    void HandleStreamDiagnostics(diagnostic_updater::DiagnosticStatusWrapper & status)
+    {
+        status.clearSummary();
+        status.add("info/location_update", locationUpdateCount->Value());
+        status.add("info/last_published_timestamp", last_published_timestamp.seconds());
+        auto time_since_last_update = rclcpp::Clock().now() - last_timestamp;
+        status.add("info/time_since_last_update", last_published_timestamp.seconds());
+        if (time_since_last_update.seconds() > 5.0){
+            status.summary(DiagStatus::WARN, "No location updates for more than 5 seconds");
+        } else {
+            status.summary(DiagStatus::OK, "OK");
         }
     }
 
@@ -157,6 +173,21 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     declare_parameter<int>("velocity_type", 1);
     declare_parameter<std::string>("server_address", "172.18.32.20");
     declare_parameter<std::string>("body_name", "sad");
+
+    const std::string ns = std::string(get_namespace());
+    const std::string node_name = std::string(get_name());
+    std::string hardware_id = ns.substr(ns.find_last_of("/") + 1) + "/" + node_name;
+
+    declare_parameter("diagnostics_frequency", 1.0);
+
+    double diagnostics_frequency = get_parameter("diagnostics_frequency").as_double();
+    impl_->updater = std::make_shared<diagnostic_updater::Updater>(
+        create_sub_node("diagnostic_updater"), 1.0 / diagnostics_frequency);
+    impl_->updater->setHardwareID(hardware_id);
+    RCLCPP_INFO(get_logger(), "Hardware ID: %s", hardware_id.c_str());
+    RCLCPP_INFO(get_logger(), "Diagnostics frequency: %.2f", diagnostics_frequency);
+
+    impl_->updater->add("mocap_pose", [this](auto & t) { impl_->HandleStreamDiagnostics(t); });
 
     double frequency = 0.0;
     auto point = geographic_msgs::msg::GeoPoint();

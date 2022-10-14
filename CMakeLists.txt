@@ -21,6 +21,7 @@ find_package(rclcpp REQUIRED)
 find_package(geodesy REQUIRED)
 find_package(px4_msgs REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(diagnostic_updater REQUIRED)
 find_package(prometheus-cpp CONFIG REQUIRED)
 
 add_subdirectory(qualisys_cpp_sdk)
@@ -29,7 +30,7 @@ include_directories(SYSTEM ${EIGEN3_INCLUDE_DIR})
 
 add_library(mocap_pose STATIC src/mocap_pose.cpp)
 target_link_libraries(mocap_pose qualisys_cpp_sdk prometheus-cpp::pull)
-ament_target_dependencies(mocap_pose rclcpp geodesy px4_msgs Eigen3)
+ament_target_dependencies(mocap_pose rclcpp geodesy px4_msgs Eigen3 diagnostic_updater)
 
 add_executable(mocap_pose_node src/mocap_pose_node.cpp)
 ament_target_dependencies(mocap_pose_node rclcpp geodesy px4_msgs Eigen3)
