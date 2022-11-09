@@ -14,7 +14,8 @@ _term() {
     fi
     kill -s SIGINT $pid
 }
-trap _term SIGTERM
+# Use SIGTERM or TERM, does not seem to make any difference.
+trap _term TERM
 
 ros-with-env ros2 launch mocap_pose mocap_pose.launch \
     address:=$INDOOR_SERVER_IP_ADDRESS \
@@ -24,6 +25,12 @@ ros-with-env ros2 launch mocap_pose mocap_pose.launch \
 child=$!
 
 echo "Waiting for pid $child"
+# Calling "wait" will then wait for the job with the specified by $child to finish, or for any signals to be fired.
+# Due to "or for any signals to be fired", "wait" will also handle SIGTERM and it will shutdown before
+# the node ends gracefully.
+# The solution is to add a second "wait" call and remove the trap between the two calls.
+wait $child
+trap - TERM
 wait $child
 RESULT=$?
 
