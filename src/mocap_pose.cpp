@@ -46,7 +46,7 @@ struct MocapPose::Impl
 
     Eigen::Vector3f FixNans(Eigen::Vector3f vec)
     {
-        if (std::isnan(vec[0]) || std::isnan(vec[1]) || std::isnan(vec[0]))
+        if (std::isnan(vec[0]) || std::isnan(vec[1]) || std::isnan(vec[2]))
         {
             return Eigen::Vector3f(0, 0, 0);
         }
@@ -211,7 +211,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
     impl_->cb_handle_alt = impl_->param_subscriber->add_parameter_callback("home_alt", callback);
 
-    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>("fmu/sensor_gps/in", 10);
+    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic, 10);
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
@@ -358,7 +358,7 @@ void MocapPose::WorkerThread()
 #endif
                                 const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
-                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, gps_timestamp, timestamp);
+                                const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp, timestamp);
                                 const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
                                                               impl_->publishing_timestep) <= timestamp.seconds();
 
