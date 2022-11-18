@@ -249,6 +249,7 @@ void MocapPose::WorkerThread()
 
         bool dataAvailable = false;
         bool streamFrames = false;
+        unsigned short udpPort = 6734;
         bool very_first_message = true;
         while (impl_->worker_thread_running)
         {
@@ -264,7 +265,7 @@ void MocapPose::WorkerThread()
             {
                 if (!rtProtocol.Connect(impl_->serverAddress.c_str(),
                                         impl_->basePort,
-                                        nullptr,
+                                        &udpPort,
                                         impl_->sdkMajorVersion,
                                         impl_->sdkMinorVersion,
                                         impl_->bigEndian))
@@ -300,13 +301,8 @@ void MocapPose::WorkerThread()
 
             if (!streamFrames)
             {
-                // use TCP only. previously we used UDP (which Mocap negotiates on top of the
-                // TCP-based control connection), but those UDP packets look from NAT gateway perspective
-                // like unsolicited packets to they aren't able to traverse NAT gateways without
-                // special port forwards, especially multiple ones (if we're on mesh networks). and
-                // also having multiple drones behind one NAT gateway would be a really hard problem.
                 if (!rtProtocol.StreamFrames(
-                        CRTProtocol::RateAllFrames, 0, 0, nullptr, CRTProtocol::cComponent6d))
+                        CRTProtocol::RateAllFrames, 0, udpPort, nullptr, CRTProtocol::cComponent6d))
                 {
                     RCLCPP_WARN(get_logger(), "Cannot start data streaming: %s", rtProtocol.GetErrorString());
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
