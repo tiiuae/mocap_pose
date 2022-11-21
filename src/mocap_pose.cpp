@@ -257,6 +257,7 @@ void MocapPose::WorkerThread()
     //
     // using the same port across re-tries so QTM server in theory can consolidate or cleanup resources.
     unsigned short udpPort = 6734 + (rand() % (65535 - 6734));
+    RCLCPP_INFO(get_logger(), "UDP port used: %u.", udpPort);
 
     while (impl_->worker_thread_running)
     {
