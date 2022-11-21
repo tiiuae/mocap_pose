@@ -267,10 +267,6 @@ void MocapPose::WorkerThread()
         bool dataAvailable = false;
         bool streamFrames = false;
 
-        if (sendNATHolepunchPacket(udpPort) != 0) {
-            RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
-        }
-
         bool very_first_message = true;
         while (impl_->worker_thread_running)
         {
@@ -280,6 +276,11 @@ void MocapPose::WorkerThread()
                 RCLCPP_WARN(get_logger(),
                             "Have not succesfully received for more than 10 secs - restarting receiver");
                 break;
+            }
+
+            if (sendNATHolepunchPacket(udpPort) != 0)
+            {
+                RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
             }
 
             if (!rtProtocol.Connected())
@@ -457,8 +458,8 @@ MocapPose::~MocapPose()
     15:47:39.923224 IP 172.18.32.20.22225 > worklaptop.17535: UDP, length 712
 */
 int MocapPose::sendNATHolepunchPacket(unsigned short receivingUDPPort) {
-	// +3 is for "QTM RT-protocol over OSC" on top of base port, documented at:
-	//   https://docs.qualisys.com/qtm-rt-protocol/#ip-port-numbers
+    // +3 is for "QTM RT-protocol over OSC" on top of base port, documented at:
+    //   https://docs.qualisys.com/qtm-rt-protocol/#ip-port-numbers
     uint16_t qtmServerPort = impl_->basePort + 3; // usually 22225
 
     int sock = ::socket(AF_INET, SOCK_DGRAM, 0);
