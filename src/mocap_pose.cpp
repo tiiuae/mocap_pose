@@ -251,6 +251,13 @@ rclcpp::Time MocapPose::QualisysToRosTimestamp(unsigned long long ts) {
 
 void MocapPose::WorkerThread()
 {
+    // randomize port between 6734 and maximum port.
+    // this is because if we're behind (and we should assume so) a NAT gateway, the port must not
+    // be ambiguous because there might be multiple mocap-pose clients behind the same gateway.
+    //
+    // using the same port across re-tries so QTM server in theory can consolidate or cleanup resources.
+    unsigned short udpPort = 6734 + (rand() % (65535 - 6734));
+
     while (impl_->worker_thread_running)
     {
         auto latest_succesfull_receive = rclcpp::Clock().now();
@@ -258,10 +265,6 @@ void MocapPose::WorkerThread()
 
         bool dataAvailable = false;
         bool streamFrames = false;
-        // randomize port between 6734 and maximum port.
-        // this is because if we're behind (and we should assume so) a NAT gateway, the port must not
-        // be ambiguous because there might be multiple mocap-pose clients behind the same gateway.
-        unsigned short udpPort = 6734 + (rand() % (65535 - 6734));
 
         if (sendNATHolepunchPacket(udpPort) != 0) {
             RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
