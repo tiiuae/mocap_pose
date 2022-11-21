@@ -432,7 +432,7 @@ MocapPose::~MocapPose()
 
     - client opens TCP control connection, on which it negotiates start of UDP stream back to client
     - if any NAT gateways stand between QTM server and the client, from gateway perspective it looks
-      like the server opens an unsolicited connection to client (server sends first packet)
+      like the server opens an unsolicited connection to client (server sends first packet, which is NOT OK)
     - therefore we send a dummy packet to server so from NAT gw perspective the server-initiated packets
       look like packets that initiated by the client (client sent first packet, which is OK).
 
@@ -453,6 +453,8 @@ MocapPose::~MocapPose()
     15:47:39.923224 IP 172.18.32.20.22225 > worklaptop.17535: UDP, length 712
 */
 int MocapPose::sendNATHolepunchPacket(unsigned short receivingUDPPort) {
+	// +3 is for "QTM RT-protocol over OSC" on top of base port, documented at:
+	//   https://docs.qualisys.com/qtm-rt-protocol/#ip-port-numbers
     uint16_t qtmServerPort = impl_->basePort + 3; // usually 22225
 
     int sock = ::socket(AF_INET, SOCK_DGRAM, 0);
