@@ -7,6 +7,7 @@ int main(int argc, char * argv[])
     rclcpp::init(argc, argv);
     std::shared_ptr<MocapPose> node = std::make_shared<MocapPose>();
     rclcpp::spin(node);
+    node->Stop();
     rclcpp::shutdown();
     return 0;
 }
