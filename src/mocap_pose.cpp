@@ -278,10 +278,14 @@ void MocapPose::WorkerThread()
         while (impl_->worker_thread_running)
         {
             auto now = rclcpp::Clock().now();
-            if (now > latest_succesfull_receive + rclcpp::Duration(2,0))
+            if ((now > (latest_succesfull_receive + rclcpp::Duration(10,0))) && rtProtocol.Connected())
             {
                 RCLCPP_WARN(get_logger(),
-                            "Have not succesfully received for more than 2 secs - restarting receiver");
+                            "Have not succesfully received for more than 10 secs - restarting receiver");
+                // Stop this process and start a new container so we can get a new connection.
+                // This scenario happens when we can get a conntection but for some reason data
+                // is not arriving to the client.
+                impl_->worker_thread_running = false;
                 break;
             }
 
@@ -424,6 +428,7 @@ void MocapPose::WorkerThread()
         rtProtocol.StopCapture();
         rtProtocol.Disconnect();
     }
+    exit(1);
 }
 
 MocapPose::~MocapPose()
