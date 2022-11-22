@@ -227,6 +227,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
 
 void MocapPose::Stop()
 {
+    RCLCPP_INFO(get_logger(), "Stopping mocap_pose threads.");
     impl_->worker_thread_running = false;
     if(impl_->worker_thread.joinable())
     {
@@ -268,19 +269,20 @@ void MocapPose::WorkerThread()
         bool streamFrames = false;
 
         bool very_first_message = true;
+
+        if (sendNATHolepunchPacket(udpPort) != 0)
+        {
+            RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
+        }
+
         while (impl_->worker_thread_running)
         {
             auto now = rclcpp::Clock().now();
-            if (now > latest_succesfull_receive + rclcpp::Duration(10,0))
+            if (now > latest_succesfull_receive + rclcpp::Duration(2,0))
             {
                 RCLCPP_WARN(get_logger(),
-                            "Have not succesfully received for more than 10 secs - restarting receiver");
+                            "Have not succesfully received for more than 2 secs - restarting receiver");
                 break;
-            }
-
-            if (sendNATHolepunchPacket(udpPort) != 0)
-            {
-                RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
             }
 
             if (!rtProtocol.Connected())
