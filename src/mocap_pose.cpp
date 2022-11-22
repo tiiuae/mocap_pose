@@ -7,6 +7,13 @@
 #include <RTPacket.h>
 #include <RTProtocol.h>
 #include <px4_msgs/msg/sensor_gps.hpp>
+#include <time.h>
+#include <stdlib.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <chrono>
 #include <sstream>
 #include <thread>
@@ -144,6 +151,8 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
 {
     RCLCPP_INFO(this->get_logger(), "MocapPose (Motion Capture Positioning Service)");
 
+    srand(time(NULL));
+
     declare_parameter<double>("home_lat", 61.50341);
     declare_parameter<double>("home_lon", 23.77509);
     declare_parameter<double>("home_alt", 110.0);
@@ -242,6 +251,14 @@ rclcpp::Time MocapPose::QualisysToRosTimestamp(unsigned long long ts) {
 
 void MocapPose::WorkerThread()
 {
+    // randomize port between 6734 and maximum port.
+    // this is because if we're behind (and we should assume so) a NAT gateway, the port must not
+    // be ambiguous because there might be multiple mocap-pose clients behind the same gateway.
+    //
+    // using the same port across re-tries so QTM server in theory can consolidate or cleanup resources.
+    unsigned short udpPort = 6734 + (rand() % (65535 - 6734));
+    RCLCPP_INFO(get_logger(), "UDP port used: %u.", udpPort);
+
     while (impl_->worker_thread_running)
     {
         auto latest_succesfull_receive = rclcpp::Clock().now();
@@ -249,7 +266,7 @@ void MocapPose::WorkerThread()
 
         bool dataAvailable = false;
         bool streamFrames = false;
-        unsigned short udpPort = 6734;
+
         bool very_first_message = true;
         while (impl_->worker_thread_running)
         {
@@ -259,6 +276,11 @@ void MocapPose::WorkerThread()
                 RCLCPP_WARN(get_logger(),
                             "Have not succesfully received for more than 10 secs - restarting receiver");
                 break;
+            }
+
+            if (sendNATHolepunchPacket(udpPort) != 0)
+            {
+                RCLCPP_WARN(get_logger(), "sendNATHolepunchPacket() failed");
             }
 
             if (!rtProtocol.Connected())
@@ -409,4 +431,60 @@ MocapPose::~MocapPose()
     {
         impl_->worker_thread.join();
     }
+}
+
+/* connection to QTM server works the following way:
+
+    - client opens TCP control connection, on which it negotiates start of UDP stream back to client
+    - if any NAT gateways stand between QTM server and the client, from gateway perspective it looks
+      like the server opens an unsolicited connection to client (server sends first packet, which is NOT OK)
+    - therefore we send a dummy packet to server so from NAT gw perspective the server-initiated packets
+      look like packets that initiated by the client (client sent first packet, which is OK).
+
+    for extra details see https://tailscale.com/blog/how-nat-traversal-works/
+
+    an alternative would have been to use full TCP connection (data plane uses the same TCP connection
+    as the control plane), but network unreliability issues make mocap-pose stuck on TCP-only, as
+    the client doesn't realize the connection is broken because after handshake + stream starting,
+    the client doesn't send any data towards the server.
+
+    TCP keepalives could have been a solution, but the latency of this data is important and I think
+    UDP based stream (considering we only care about the newest data) recovers much faster than even
+    tuned TCP keepalive parameters could.
+
+    from tcpdump looks like this (the first line is our holepunch packet, from second on its QTM data stream):
+
+    15:47:39.883615 IP worklaptop.17535 > 172.18.32.20.22225: UDP, length 0
+    15:47:39.923224 IP 172.18.32.20.22225 > worklaptop.17535: UDP, length 712
+*/
+int MocapPose::sendNATHolepunchPacket(unsigned short receivingUDPPort) {
+    // +3 is for "QTM RT-protocol over OSC" on top of base port, documented at:
+    //   https://docs.qualisys.com/qtm-rt-protocol/#ip-port-numbers
+    uint16_t qtmServerPort = impl_->basePort + 3; // usually 22225
+
+    int sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock == -1) {
+        return -1;
+    }
+
+    sockaddr_in qtmServerAddr;
+    qtmServerAddr.sin_family = AF_INET;
+    qtmServerAddr.sin_port = htons(qtmServerPort);
+    qtmServerAddr.sin_addr.s_addr = inet_addr(impl_->serverAddress.c_str());
+
+    sockaddr_in ourAddress;
+    ourAddress.sin_family = AF_INET;
+    ourAddress.sin_port = htons(receivingUDPPort);
+    ourAddress.sin_addr.s_addr = inet_addr("0.0.0.0");
+
+    // needed for outgoing packets to have predefined port (this is important)
+    if (bind(sock, reinterpret_cast<sockaddr*>(&ourAddress), sizeof(ourAddress)) == -1) {
+        return -1;
+    }
+
+    std::string emptyPayload = ""; // doesn't need to have any content
+    int n_bytes = ::sendto(sock, emptyPayload.c_str(), emptyPayload.length(), 0, reinterpret_cast<sockaddr*>(&qtmServerAddr), sizeof(qtmServerAddr));
+    ::close(sock);
+
+    return 0;
 }

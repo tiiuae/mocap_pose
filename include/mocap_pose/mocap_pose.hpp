@@ -24,6 +24,7 @@ private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
     int64_t minTimestampDiff;
+    int sendNATHolepunchPacket(unsigned short);
 };
 
 #endif // FOG_SW_MOCAP_POS_HPP
