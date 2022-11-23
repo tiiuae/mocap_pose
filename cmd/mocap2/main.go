@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -68,7 +69,8 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 		return err
 	}
 
-	repeatNATHolepunch := time.NewTicker(10 * time.Second)
+	repeatNATHolepunch := time.NewTicker(9 * time.Second)
+	checkTime := time.NewTicker(2 * time.Second)
 
 	sendNATHolepunch := func() error {
 		log.Println("sending NAT holepunch")
@@ -107,7 +109,6 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 	if err != nil {
 		return err
 	}
-	defer serverControlConnection.Close()
 
 	serverControlConnectionClosedUnexpectedly := make(chan error, 1)
 
@@ -119,6 +120,7 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 	}()
 
 	lastLocationLogged := time.Time{}
+	lastSuccessfulLocationUpdate := time.Now() // OK to lie so we get some time in the start to wait for the first frame
 	numLogEntriesSuppressed := 0
 
 	for {
@@ -148,6 +150,8 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 						body.Z,
 						numLogEntriesSuppressed)
 
+					lastSuccessfulLocationUpdate = time.Now()
+
 					locationUpdateCount.Inc()
 				} else {
 					log.Printf("%s not found (data is NaN's)", bodyConf.lookForBodyName)
@@ -161,6 +165,10 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 		case <-repeatNATHolepunch.C:
 			if err := sendNATHolepunch(); err != nil {
 				return err
+			}
+		case <-checkTime.C:
+			if time.Since(lastSuccessfulLocationUpdate) > 10*time.Second {
+				return errors.New("too much time since last successful location update - stopping")
 			}
 		case err := <-serverControlConnectionClosedUnexpectedly:
 			return fmt.Errorf("serverControlConnectionClosedUnexpectedly: %v", err)
