@@ -136,10 +136,10 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 				return ErrorWrap("parseData6DOFForBody", err)
 			}
 
-			if body.HasXYZ() { // check that coords ain't NaN's
-				suppress := time.Since(lastLocationLogged) < 2*time.Second
+			suppress := time.Since(lastLocationLogged) < 2*time.Second
 
-				if !suppress {
+			if !suppress {
+				if body.HasXYZ() { // check that coords ain't NaN's
 					log.Printf(
 						"%s [%f, %f, %f] (+ %d after previous log msg)",
 						bodyConf.lookForBodyName,
@@ -148,15 +148,15 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 						body.Z,
 						numLogEntriesSuppressed)
 
-					lastLocationLogged = time.Now()
-					numLogEntriesSuppressed = 0
+					locationUpdateCount.Inc()
 				} else {
-					numLogEntriesSuppressed++
+					log.Printf("%s not found (data is NaN's)", bodyConf.lookForBodyName)
 				}
 
-				locationUpdateCount.Inc()
+				lastLocationLogged = time.Now()
+				numLogEntriesSuppressed = 0
 			} else {
-				log.Printf("%s not found (data is NaN's)", bodyConf.lookForBodyName)
+				numLogEntriesSuppressed++
 			}
 		case <-repeatNATHolepunch.C:
 			if err := sendNATHolepunch(); err != nil {
