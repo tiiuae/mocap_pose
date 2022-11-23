@@ -59,6 +59,8 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 	//nolint:gosec
 	localPort := int(6734 + rand.Int31n(65535-6734))
 
+	log.Printf("chose random port %d for local UDP receiver", localPort)
+
 	qtmRtConn, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
 		Port: localPort,
