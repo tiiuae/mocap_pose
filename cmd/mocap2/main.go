@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 	"time"
@@ -51,9 +52,12 @@ func main() {
 
 // the magic happens here
 func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) error {
+	rand.Seed(time.Now().UTC().UnixNano())
+
 	serverAddr := newQtmServerAddrWithDefaultBasePort(serverIP)
 
-	localPort := 6735 // TODO: randomize
+	//nolint:gosec
+	localPort := int(6734 + rand.Int31n(65535-6734))
 
 	qtmRtConn, err := net.ListenUDP("udp4", &net.UDPAddr{
 		IP:   net.IPv4(0, 0, 0, 0),
