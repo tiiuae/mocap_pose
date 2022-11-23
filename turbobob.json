@@ -1,0 +1,20 @@
+{
+	"for_description_of_this_file_see": "https://github.com/function61/turbobob",
+	"version_major": 1,
+	"project_name": "mocap2",
+	"project_emoji_icon": "",
+	"builders": [
+		{
+			"name": "default",
+			"uses": "docker://fn61/buildkit-golang:20221017_1220_d2ee72b9",
+			"commands": {
+				"build": ["build-go-project.sh", "--directory=cmd/mocap2/", "--binary-basename=mocap2"],
+				"dev": ["bash"]
+			},
+			"mount_destination": "/workspace"
+		}
+	],
+	"os_arches": {
+		"linux-amd64": true
+	}
+}
