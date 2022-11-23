@@ -142,6 +142,12 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 				return ErrorWrap("parseData6DOFForBody", err)
 			}
 
+			if body.HasXYZ() {
+				lastSuccessfulLocationUpdate = time.Now()
+
+				locationUpdateCount.Inc()
+			}
+
 			suppress := time.Since(lastLocationLogged) < 2*time.Second
 
 			if !suppress {
@@ -153,10 +159,6 @@ func clientLogic(ctx context.Context, serverIP string, droneDeviceID string) err
 						body.Y,
 						body.Z,
 						numLogEntriesSuppressed)
-
-					lastSuccessfulLocationUpdate = time.Now()
-
-					locationUpdateCount.Inc()
 				} else {
 					log.Printf("%s not found (data is NaN's)", bodyConf.lookForBodyName)
 				}
