@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-7072ebc AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage:builder-a03a9b1 AS builder
 
 COPY . /main_ws/src/
 
@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-7072ebc
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-a03a9b1
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
