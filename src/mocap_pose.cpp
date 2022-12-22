@@ -219,8 +219,9 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     impl_->cb_handle_lat = impl_->param_subscriber->add_parameter_callback("home_lat", callback);
     impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
     impl_->cb_handle_alt = impl_->param_subscriber->add_parameter_callback("home_alt", callback);
+    rclcpp::QoS best_effort_qos = rclcpp::QoS(rclcpp::KeepLast(1)).best_effort();
 
-    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic, 10);
+    impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic, best_effort_qos);
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
