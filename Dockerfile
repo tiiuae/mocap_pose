@@ -13,6 +13,10 @@ RUN /packaging/build.sh
 
 FROM ghcr.io/tiiuae/fog-ros-baseimage:v2.0.0
 
+HEALTHCHECK --interval=5s \
+	CMD fog-health check --metric=location_update_count --diff-gte=5.0 \
+		--metrics-from=http://localhost:${METRICS_PORT}/metrics --only-if-nonempty=${METRICS_PORT}
+
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 COPY entrypoint.sh /entrypoint.sh

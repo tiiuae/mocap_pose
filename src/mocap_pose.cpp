@@ -14,6 +14,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <prometheus/counter.h>
+#include <prometheus/exposer.h>
+#include <prometheus/registry.h>
 #include <chrono>
 #include <sstream>
 #include <thread>
@@ -50,6 +53,9 @@ struct MocapPose::Impl
     std::thread worker_thread;
     std::atomic_bool worker_thread_running{};
     std::mutex home_coord_mutex;
+
+    std::shared_ptr<prometheus::Registry> metrics_registry = std::make_shared<prometheus::Registry>();
+    prometheus::Counter* locationUpdateCount;
 
     Eigen::Vector3f FixNans(Eigen::Vector3f vec)
     {
@@ -215,6 +221,11 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
         this->impl_->home = geodesy::UTMPoint(point);
     };
 
+    impl_->locationUpdateCount = &(prometheus::BuildCounter()
+        .Name("location_update_count")
+        .Help("Number of location updates received from Mocap server")
+        .Register(*impl_->metrics_registry).Add({}));
+
     impl_->param_subscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
     impl_->cb_handle_lat = impl_->param_subscriber->add_parameter_callback("home_lat", callback);
     impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
@@ -252,6 +263,16 @@ rclcpp::Time MocapPose::QualisysToRosTimestamp(unsigned long long ts) {
 
 void MocapPose::WorkerThread()
 {
+    std::shared_ptr<prometheus::Exposer> metrics_exposer;
+
+    auto metrics_port = getenv("METRICS_PORT");
+    if (metrics_port != nullptr) // start HTTP endpoint only if requested
+    {
+        metrics_exposer = std::make_shared<prometheus::Exposer>("0.0.0.0:" + std::string(metrics_port));
+
+        metrics_exposer->RegisterCollectable(this->impl_->metrics_registry);
+    }
+
     // randomize port between 6734 and maximum port.
     // this is because if we're behind (and we should assume so) a NAT gateway, the port must not
     // be ambiguous because there might be multiple mocap-pose clients behind the same gateway.
@@ -398,6 +419,8 @@ void MocapPose::WorkerThread()
                                 {
                                     if (very_first_message || time_to_publish)
                                     {
+                                        impl_->locationUpdateCount->Increment();
+
                                         RCLCPP_INFO(this->get_logger(),
                                                     "Publish GPS at time %lf, previous_time: %lf , gps ts %lf",
                                                     timestamp.seconds(),
