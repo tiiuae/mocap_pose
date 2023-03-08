@@ -1,0 +1,9 @@
+FROM ghcr.io/tiiuae/fog-ros-baseimage-builder-coverity:main
+
+COPY coverity.yaml /main_ws/src/
+COPY . /main_ws/src/
+
+ENV SKIP_BUILD_UNDERLAY_STEPS=true
+RUN /cov/bin/cov-configure --gcc
+
+ENTRYPOINT [ "entrypoint-coverity.sh" ]
