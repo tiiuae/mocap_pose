@@ -1,0 +1,33 @@
+FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:riscv64_support AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -y \
+    && apt-get install -y --no-install-recommends \
+        angles-dev \
+    && rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=dialog
+
+COPY . /main_ws/src/mocap-pose
+
+RUN /packaging/build_colcon.sh
+
+
+#  ▲               runtime ──┐
+#  └── build                 ▼
+
+FROM ghcr.io/tiiuae/fog-ros-baseimage:riscv64_support
+
+ENTRYPOINT [ "/entrypoint.sh" ]
+
+COPY entrypoint.sh /entrypoint.sh
+
+WORKDIR /main_ws/install
+
+COPY --from=builder /main_ws/install  /main_ws/install
+
+RUN ln -s /etc/profile.d/ros/setup.sh /usr/setup.sh
+RUN ln -s /etc/profile.d/ros/setup.bash /usr/setup.bash
+RUN ln -s /etc/profile.d/ros/local_setup.sh /usr/local_setup.sh
+RUN ln -s /etc/profile.d/ros/local_setup.bash /usr/local_setup.bash
+
+
