@@ -8,9 +8,9 @@ on:
 
 jobs:
   coverity:
-    runs-on: mocap-pose-self-hosted-coverity
+    runs-on: octomap-server2-self-hosted-coverity
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@
         with:
           submodules: recursive
       - name: Login to GitHub Container Registry
