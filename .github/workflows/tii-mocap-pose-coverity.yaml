@@ -3,8 +3,6 @@ name: tii-mocap-pose-coverity
 on:
   repository_dispatch:
   push:
-    branches:
-      - main
 
 jobs:
   coverity:
