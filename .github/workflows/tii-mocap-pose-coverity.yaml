@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   coverity:
@@ -19,4 +20,4 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run coverity scan
         run:
-          docker run --rm -e PROJECT_NAME=${{ github.event.repository.name }} -v "$(pwd):/main_ws/src"  ghcr.io/tiiuae/fog-ros-baseimage-builder-coverity:main
+          docker run --rm -e PROJECT_NAME=${{ github.event.repository.name }} -v "$(pwd):/main_ws/src" ghcr.io/tiiuae/fog-ros-baseimage-builder-coverity:main
