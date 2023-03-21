@@ -7,7 +7,7 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 ENV DEBIAN_FRONTEND=dialog
 
-COPY . /main_ws/src/mocap-pose
+COPY . $SRC_DIR/mocap_pose
 
 RUN /packaging/build_colcon.sh
 
@@ -17,18 +17,8 @@ RUN /packaging/build_colcon.sh
 
 FROM ghcr.io/tiiuae/fog-ros-baseimage:riscv64_support
 
-ARG INSTALL_DIR="/main_ws/install"
-
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 COPY entrypoint.sh /entrypoint.sh
 
 COPY --from=builder $INSTALL_DIR  $INSTALL_DIR
-
-RUN ln -s /etc/profile.d/ros/setup.sh /usr/setup.sh
-RUN ln -s /etc/profile.d/ros/setup.bash /usr/setup.bash
-RUN ln -s /etc/profile.d/ros/local_setup.sh /usr/local_setup.sh
-RUN ln -s /etc/profile.d/ros/local_setup.bash /usr/local_setup.bash
-
-RUN sed -i "\|^\. /usr/bin/ros_setup.bash|a . $INSTALL_DIR/setup.bash" \
-    /usr/bin/ros-with-env
