@@ -99,5 +99,6 @@ jobs:
             --amend ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }}-riscv64
       - name: Push image to the registry
         run: |
-          docker tag ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }} ghcr.io/tiiuae/tii-mocap-pose:latest
           docker manifest push ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }}
+          docker tag ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }} ghcr.io/tiiuae/tii-mocap-pose:latest
+          docker push ghcr.io/tiiuae/tii-mocap-pose:latest
