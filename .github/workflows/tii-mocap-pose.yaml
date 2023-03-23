@@ -59,7 +59,6 @@ jobs:
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
-            type=raw,value=latest
             ${{ env.IMAGE_TAG_FORMAT }}
             type=sha,suffix=-${{ matrix.architecture }}
 
@@ -100,4 +99,5 @@ jobs:
             --amend ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }}-riscv64
       - name: Push image to the registry
         run: |
+          docker tag ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }} ghcr.io/tiiuae/tii-mocap-pose:latest
           docker manifest push ghcr.io/tiiuae/tii-mocap-pose:sha-${{ needs.build.outputs.short_git_sha }}
