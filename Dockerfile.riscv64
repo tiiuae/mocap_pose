@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:sha-839ea56 AS builder
+FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:sha-839ea56-riscv4 AS builder
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends \
@@ -12,7 +12,7 @@ RUN /packaging/build_colcon.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-839ea56
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-839ea56-riscv4
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
