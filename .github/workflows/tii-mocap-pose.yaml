@@ -28,9 +28,10 @@ jobs:
         with:
           platforms: amd64,riscv64
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: amd64,riscv64
 
       - name: Set short git commit SHA
         id: vars
