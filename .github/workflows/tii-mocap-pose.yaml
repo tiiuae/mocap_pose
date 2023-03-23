@@ -58,8 +58,6 @@ jobs:
           images: ghcr.io/tiiuae/tii-mocap-pose
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}}
-            ${{ env.IMAGE_TAG_FORMAT }}
             type=sha,suffix=-${{ matrix.architecture }}
 
       - name: Login to GitHub Container Registry
