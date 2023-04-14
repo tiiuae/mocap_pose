@@ -1,5 +1,9 @@
 FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:v1.0.0 AS builder
 
+# DIRTY HOTFIX TO STILL KEEP THE OLD BASEIMAGE WITH NEW REPO - DO NOT KEEP THIS
+RUN rm -f /etc/apt/sources.list.d/fogsw.list && rm -f /etc/apt/sources.list.d/fogsw-sros.list && \
+    echo "deb [trusted=yes] https://ssrc.jfrog.io/artifactory/ssrc-deb-public-local focal fog-sw" >> /etc/apt/sources.list.d/fogsw-latest.list
+
 COPY . /main_ws/src/
 
 # this:
