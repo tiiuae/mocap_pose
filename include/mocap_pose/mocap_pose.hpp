@@ -23,6 +23,7 @@ private:
     void WorkerThread();
     struct Impl;
     std::unique_ptr<Impl> impl_;
+    rclcpp::Clock::SharedPtr clock_;
     int64_t minTimestampDiff;
     int sendNATHolepunchPacket(unsigned short);
 };
