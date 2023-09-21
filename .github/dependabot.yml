@@ -15,3 +15,7 @@ updates:
           - "tiiuae/fog-ros-sdk"
           - "tiiuae/fog-ros-baseimage-builder"
           - "tiiuae/fog-ros-baseimage"
+- package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
