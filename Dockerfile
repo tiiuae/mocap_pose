@@ -1,26 +1,28 @@
-FROM ghcr.io/tiiuae/fog-ros-baseimage-builder:v2.1.0 AS builder
+# Given dynamically from CI job.
+FROM --platform=${BUILDPLATFORM:-linux/amd64} ghcr.io/tiiuae/fog-ros-sdk:sha-6d67ecf-${TARGETARCH:-amd64} AS builder
 
-COPY . /main_ws/src/
+# Must be defined another time after "FROM" keyword.
+ARG TARGETARCH
 
-# this:
-# 1) builds the application
-# 2) packages the application as .deb in /main_ws/
+# SRC_DIR environment variable is defined in the fog-ros-sdk image.
+# The same workspace path is used by all ROS2 components.
+# See: https://github.com/tiiuae/fog-ros-baseimage/blob/main/Dockerfile.sdk_builder
+COPY . $SRC_DIR/mocap_pose
 
-RUN /packaging/build.sh
+# Tar directories so they are easier to handle when doing installation.
+RUN /packaging/build_colcon_sdk.sh ${TARGETARCH:-amd64}
+# Even though it is possible to tar the install directory for retrieving it later in runtime image,
+# the tar extraction in arm64 emulated on arm64 is still slow. So, we copy the install directory instead
 
-#  ▲               runtime ──┐
-#  └── build                 ▼
-
-FROM ghcr.io/tiiuae/fog-ros-baseimage:v2.1.0
-
-HEALTHCHECK --interval=5s \
-	CMD fog-health check --metric=location_update_count --diff-gte=5.0 \
-		--metrics-from=http://localhost:${METRICS_PORT}/metrics --only-if-nonempty=${METRICS_PORT}
+FROM ghcr.io/tiiuae/fog-ros-baseimage:sha-6d67ecf
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
 COPY entrypoint.sh /entrypoint.sh
 
-COPY --from=builder /main_ws/ros-*-mocap-pose_*_amd64.deb /mocap-pose.deb
+# WORKSPACE_DIR environment variable is defined in the fog-ros-baseimage.
+# The same installation directory is used by all ROS2 components.
+# See: https://github.com/tiiuae/fog-ros-baseimage/blob/main/Dockerfile
+WORKDIR $WORKSPACE_DIR
 
-RUN dpkg -i /mocap-pose.deb && rm /mocap-pose.deb
+COPY --from=builder $WORKSPACE_DIR/install install
