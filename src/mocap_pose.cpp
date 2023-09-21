@@ -14,9 +14,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-#include <prometheus/counter.h>
-#include <prometheus/exposer.h>
-#include <prometheus/registry.h>
 #include <chrono>
 #include <sstream>
 #include <thread>
@@ -53,9 +50,6 @@ struct MocapPose::Impl
     std::thread worker_thread;
     std::atomic_bool worker_thread_running{};
     std::mutex home_coord_mutex;
-
-    std::shared_ptr<prometheus::Registry> metrics_registry = std::make_shared<prometheus::Registry>();
-    prometheus::Counter* locationUpdateCount;
 
     Eigen::Vector3f FixNans(Eigen::Vector3f vec)
     {
@@ -178,7 +172,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     get_parameter("velocity_type", impl_->velocity_type);
     impl_->home = geodesy::UTMPoint(point);
     impl_->publishing_timestep = (frequency > 0.0) ? 1.0 / frequency : 0.0;
-    clock_ = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
 
     RCLCPP_INFO(get_logger(), "Looking for body with name: %s", impl_->bodyName.c_str());
     RCLCPP_INFO(this->get_logger(),
@@ -222,11 +215,6 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
         this->impl_->home = geodesy::UTMPoint(point);
     };
 
-    impl_->locationUpdateCount = &(prometheus::BuildCounter()
-        .Name("location_update_count")
-        .Help("Number of location updates received from Mocap server")
-        .Register(*impl_->metrics_registry).Add({}));
-
     impl_->param_subscriber = std::make_shared<rclcpp::ParameterEventHandler>(this);
     impl_->cb_handle_lat = impl_->param_subscriber->add_parameter_callback("home_lat", callback);
     impl_->cb_handle_lon = impl_->param_subscriber->add_parameter_callback("home_lon", callback);
@@ -264,16 +252,6 @@ rclcpp::Time MocapPose::QualisysToRosTimestamp(unsigned long long ts) {
 
 void MocapPose::WorkerThread()
 {
-    std::shared_ptr<prometheus::Exposer> metrics_exposer;
-
-    auto metrics_port = getenv("METRICS_PORT");
-    if (metrics_port != nullptr) // start HTTP endpoint only if requested
-    {
-        metrics_exposer = std::make_shared<prometheus::Exposer>("0.0.0.0:" + std::string(metrics_port));
-
-        metrics_exposer->RegisterCollectable(this->impl_->metrics_registry);
-    }
-
     // randomize port between 6734 and maximum port.
     // this is because if we're behind (and we should assume so) a NAT gateway, the port must not
     // be ambiguous because there might be multiple mocap-pose clients behind the same gateway.
@@ -284,7 +262,7 @@ void MocapPose::WorkerThread()
 
     while (impl_->worker_thread_running)
     {
-        auto latest_succesfull_receive = clock_->now();
+        auto latest_succesfull_receive = rclcpp::Clock().now();
         CRTProtocol rtProtocol;
 
         bool dataAvailable = false;
@@ -299,7 +277,7 @@ void MocapPose::WorkerThread()
 
         while (impl_->worker_thread_running)
         {
-            auto now = clock_->now();
+            auto now = rclcpp::Clock().now();
             if ((now > (latest_succesfull_receive + rclcpp::Duration(10,0))) && rtProtocol.Connected())
             {
                 RCLCPP_WARN(get_logger(),
@@ -379,19 +357,13 @@ void MocapPose::WorkerThread()
 
                     for (unsigned int i = 0; i < rtPacket->Get6DOFBodyCount(); i++)
                     {
-                        auto name = std::string(rtProtocol.Get6DOFBodyName(i));
-
-                        if (name == impl_->bodyName)
+                        if (rtPacket->Get6DOFBody(i, fX, fY, fZ, rotation))
                         {
-                            body_found = true;
-                            if (rtPacket->Get6DOFBody(i, fX, fY, fZ, rotation))
+                            auto name = std::string(rtProtocol.Get6DOFBodyName(i));
+
+                            if (name == impl_->bodyName)
                             {
-                                const auto timestamp = clock_->now();
-                                const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
-                                                              impl_->publishing_timestep) <= timestamp.seconds();
-                                if (!time_to_publish && !very_first_message){
-                                    continue;
-                                }
+                                body_found = true;
 
                                 // convert millimeters into meters
                                 const Eigen::Vector3f Pos = Eigen::Vector3f(fX, fY, fZ) / 1000.F;
@@ -408,8 +380,11 @@ void MocapPose::WorkerThread()
                                             Q.y(),
                                             Q.z());
 #endif
+                                const auto timestamp = rclcpp::Clock().now();
                                 const auto gps_timestamp = QualisysToRosTimestamp(rtPacket->GetTimeStamp());
                                 const auto gps_msg = impl_->PrepareGpsMessage(Pos, Q, timestamp, timestamp);
+                                const bool time_to_publish = (impl_->last_published_timestamp.seconds() +
+                                                              impl_->publishing_timestep) <= timestamp.seconds();
 
                                 const bool translation_is_valid =
                                     !std::isnan(Pos[0]) && !std::isnan(Pos[1]) && !std::isnan(Pos[2]);
@@ -417,15 +392,13 @@ void MocapPose::WorkerThread()
                                                                !std::isnan(Q.y()) && !std::isnan(Q.z());
                                 const bool data_is_valid = translation_is_valid && rotation_is_valid;
 
-                                latest_succesfull_receive = clock_->now();
+                                latest_succesfull_receive = rclcpp::Clock().now();
 
                                 if (data_is_valid)
                                 {
                                     if (very_first_message || time_to_publish)
                                     {
-                                        impl_->locationUpdateCount->Increment();
-
-                                        RCLCPP_INFO_THROTTLE(this->get_logger(), *clock_, 2000,
+                                        RCLCPP_INFO(this->get_logger(),
                                                     "Publish GPS at time %lf, previous_time: %lf , gps ts %lf",
                                                     timestamp.seconds(),
                                                     impl_->last_published_timestamp.seconds(),
@@ -437,8 +410,7 @@ void MocapPose::WorkerThread()
                                 }
                                 else
                                 {
-                                    RCLCPP_WARN_THROTTLE(get_logger(), *clock_, 2000,
-                                                "Data is full of NaNs and thus NOT PUBLISHED!");
+                                    RCLCPP_WARN(get_logger(), "Data is full of NaNs and thus NOT PUBLISHED!");
                                 }
                             }
                         }
@@ -446,7 +418,7 @@ void MocapPose::WorkerThread()
 
                     if (!body_found)
                     {
-                        RCLCPP_WARN_THROTTLE(get_logger(), *clock_, 1000,
+                        RCLCPP_WARN(get_logger(),
                                     "Cannot find body named \"%s\" in Qualisys Data Stream",
                                     impl_->bodyName.c_str());
                     }

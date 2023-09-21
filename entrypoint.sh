@@ -4,7 +4,7 @@ _term() {
     # FILL UP PROCESS SEARCH PATTERN HERE TO FIND PROPER PROCESS FOR SIGINT:
     pattern="mocap_pose/mocap_pose_node"
 
-    pid_value="$(ps -ax | grep $pattern | grep -v grep | awk '{ print $1 }')"
+    pid_value="$(ps -e | grep $pattern | grep -v grep | awk '{ print $1 }')"
     if [ "$pid_value" != "" ]; then
         pid=$pid_value
         echo "Send SIGINT to pid $pid"
