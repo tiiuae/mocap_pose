@@ -438,7 +438,7 @@ void MocapPose::WorkerThread()
                                 else
                                 {
                                     RCLCPP_WARN_THROTTLE(get_logger(), *clock_, 2000,
-                                                "Data is full of NaNs and thus NOT PUBLISHED!");
+                                                "body found but location null - not publishing");
                                 }
                             }
                         }
