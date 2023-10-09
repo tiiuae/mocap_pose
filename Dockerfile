@@ -11,7 +11,7 @@ RUN /packaging/build.sh
 #  ▲               runtime ──┐
 #  └── build                 ▼
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:v2.1.0
+FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.0.1
 
 HEALTHCHECK --interval=5s \
 	CMD fog-health check --metric=location_update_count --diff-gte=5.0 \
