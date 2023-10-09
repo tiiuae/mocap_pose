@@ -6,6 +6,9 @@ COPY . /main_ws/src/
 # 1) builds the application
 # 2) packages the application as .deb in /main_ws/
 
+RUN dpkg -i /main_ws/src/ros-humble-px4-msgs_6.0.0-0~git20231005.d0a163b_amd64.deb && rm -f /main_ws/src/ros-humble-px4-msgs_6.0.0-0~git20231005.d0a163b_amd64.deb
+RUN sed -i 's/ros-humble-px4-msgs=5.0.0\*/ros-humble-px4-msgs/g' /packaging/rosdep.yaml
+
 RUN /packaging/build.sh
 
 #  ▲               runtime ──┐
