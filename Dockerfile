@@ -14,7 +14,7 @@ RUN /packaging/build_colcon_sdk.sh ${TARGETARCH:-amd64}
 # Even though it is possible to tar the install directory for retrieving it later in runtime image,
 # the tar extraction in arm64 emulated on arm64 is still slow. So, we copy the install directory instead
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.0.1
+FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.0.2
 
 ENTRYPOINT [ "/entrypoint.sh" ]
 
