@@ -21,7 +21,7 @@
   <arg name="alt" default="110.0"/>
   <arg name="freq" default="10.0"/>
   <arg name="address" default="172.18.32.111"/>
-  <arg name="name" default="$(env DRONE_DEVICE_ID)"/>
+  <arg name="name" default="$(env DEVICE_ALIAS)"/>
   <arg name="vel" default="1"/>
 
 
