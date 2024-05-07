@@ -14,6 +14,8 @@ RUN /packaging/build_colcon_sdk.sh ${TARGETARCH:-amd64}
 # Even though it is possible to tar the install directory for retrieving it later in runtime image,
 # the tar extraction in arm64 emulated on arm64 is still slow. So, we copy the install directory instead
 
+FROM ghcr.io/tiiuae/pkcs11-closer:sha-7bec028 AS closer
+
 FROM ghcr.io/tiiuae/fog-ros-baseimage:v3.2.0
 
 HEALTHCHECK --interval=5s \
@@ -29,4 +31,5 @@ COPY entrypoint.sh /entrypoint.sh
 # See: https://github.com/tiiuae/fog-ros-baseimage/blob/main/Dockerfile
 WORKDIR $WORKSPACE_DIR
 
+COPY --from=closer /pkcs11-closer /
 COPY --from=builder $WORKSPACE_DIR/install install

@@ -37,6 +37,8 @@ trap - TERM
 wait $child
 RESULT=$?
 
+/pkcs11-closer --label mocap-pose
+
 if [ $RESULT -ne 0 ]; then
     echo "ERROR: Mocap pose node failed with code $RESULT" >&2
     exit $RESULT
