@@ -23,6 +23,7 @@
   <arg name="address" default="172.18.32.111"/>
   <arg name="name" default="$(env DEVICE_ALIAS)"/>
   <arg name="vel" default="1"/>
+  <arg name="sim" default="0"/>
 
 
   <node name="mocap_pose" pkg="mocap_pose" exec="mocap_pose_node" namespace='$(env DRONE_DEVICE_ID)'>
@@ -33,6 +34,7 @@
     <param name="server_address" value="$(var address)"/>
     <param name="body_name" value="$(var name)"/>
     <param name="velocity_type" value="$(var vel)"/>
+    <param name="simulate" value="$(var sim)"/>
   </node>
 
 </launch>

@@ -21,6 +21,7 @@ private:
 
     rclcpp::Time QualisysToRosTimestamp(unsigned long long ts);
     void WorkerThread();
+    void SimWorkerThread();
     struct Impl;
     std::unique_ptr<Impl> impl_;
     rclcpp::Clock::SharedPtr clock_;

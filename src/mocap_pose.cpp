@@ -166,7 +166,9 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     declare_parameter<int>("velocity_type", 1);
     declare_parameter<std::string>("server_address", "172.18.32.20");
     declare_parameter<std::string>("body_name", "sad");
+    declare_parameter<int>("simulate", 0);
 
+    int simulate = 0;
     double frequency = 0.0;
     auto point = geographic_msgs::msg::GeoPoint();
     get_parameter("home_lat", point.latitude);
@@ -176,12 +178,14 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     get_parameter("body_name", impl_->bodyName);
     get_parameter("frequency", frequency);
     get_parameter("velocity_type", impl_->velocity_type);
+    get_parameter("simulate", simulate);
     impl_->home = geodesy::UTMPoint(point);
     impl_->publishing_timestep = (frequency > 0.0) ? 1.0 / frequency : 0.0;
     clock_ = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
 
     RCLCPP_INFO(get_logger(), "Looking for body with name: %s", impl_->bodyName.c_str());
-    RCLCPP_INFO(this->get_logger(),
+    RCLCPP_INFO(get_logger(), "MOCAP Simulation: %d", simulate);
+    RCLCPP_INFO(get_logger(),
                 "Frequency: %lf, delay: %lf, Velocity type: %d",
                 frequency,
                 impl_->publishing_timestep,
@@ -234,7 +238,10 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
 
     impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic, 10);
     impl_->worker_thread_running = true;
-    impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
+    if (simulate != 0)
+        impl_->worker_thread = std::thread(&MocapPose::SimWorkerThread, this);
+    else
+        impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
 
 void MocapPose::Stop()
@@ -457,6 +464,93 @@ void MocapPose::WorkerThread()
         rtProtocol.Disconnect();
     }
     exit(1);
+}
+
+void MocapPose::SimWorkerThread()
+{
+    Eigen::Vector3f position;
+    RCLCPP_INFO(get_logger(), "Start Mocap Pose simulation");
+
+    int sleep_time = (int) (impl_->publishing_timestep * 1000.0);
+    if (sleep_time < 10) {
+        sleep_time = 10;
+    }
+
+    while (impl_->worker_thread_running)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time));
+        auto timestamp = clock_->now();
+        auto utc_timestamp = timestamp;
+
+        // Random noise
+        position[0] = ((float)(rand() % 100) / 50000.0) - 0.001;
+        position[1] = ((float)(rand() % 100) / 50000.0) - 0.001;
+        position[2] = ((float)(rand() % 100) / 100000.0) - 0.0005;
+
+        px4_msgs::msg::SensorGps sensor_gps{};
+
+        // Position
+        geodesy::UTMPoint utm = geodesy::UTMPoint(impl_->home);
+
+        utm.easting += position[0];
+        utm.northing += position[1];
+        utm.altitude += position[2];
+
+        const geographic_msgs::msg::GeoPoint point = toMsg(utm);
+
+        Eigen::Vector3f velocity{};  // meters per second
+
+        // Velocity
+        if (impl_->last_timestamp.nanoseconds() > 0)
+        {
+            velocity = (position - impl_->last_position) / (timestamp.seconds() - impl_->last_timestamp.seconds());
+        }
+        velocity = impl_->FixNans(velocity);
+
+        // filter velocity
+        const float avg_factor = 0.1F;
+        velocity = velocity * avg_factor + impl_->last_velocity * (1.F - avg_factor);
+        velocity = impl_->FixNans(velocity);
+
+        impl_->last_timestamp = clock_->now();
+        impl_->last_position = position;
+        impl_->last_velocity = velocity;
+
+        const double heading_rad = 0.0f;
+
+        sensor_gps.timestamp = timestamp.nanoseconds() / 1000ULL;
+        sensor_gps.lat = (uint32_t)std::round(point.latitude * 10000000);
+        sensor_gps.lon = (uint32_t)std::round(point.longitude * 10000000);
+        sensor_gps.alt = (uint32_t)std::round(point.altitude * 1000);
+        sensor_gps.s_variance_m_s = 0.2f;
+
+        sensor_gps.fix_type = 3;
+        sensor_gps.eph = 0.5f;
+        sensor_gps.epv = 0.8f;
+        sensor_gps.hdop = 0.0f;
+        sensor_gps.vdop = 0.0f;
+
+        sensor_gps.time_utc_usec = utc_timestamp.nanoseconds() / 1000ULL;  // system time (UTF) in millis
+        sensor_gps.satellites_used = 16;
+        sensor_gps.heading = heading_rad;
+        sensor_gps.heading_offset = 0.0f;
+
+        sensor_gps.vel_m_s = velocity.norm();
+        sensor_gps.vel_n_m_s = velocity[1];
+        sensor_gps.vel_e_m_s = velocity[0];
+        sensor_gps.vel_d_m_s = -velocity[2];
+        sensor_gps.cog_rad = atan2(velocity[0], velocity[1]);
+        sensor_gps.vel_ned_valid = true;
+
+        impl_->locationUpdateCount->Increment();
+
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *clock_, 2000,
+                    "Publish GPS at time %lf, previous_time: %lf",
+                    timestamp.seconds(),
+                    impl_->last_published_timestamp.seconds());
+        impl_->publisher->publish(sensor_gps);
+        impl_->last_published_timestamp = timestamp;
+    }
 }
 
 MocapPose::~MocapPose()

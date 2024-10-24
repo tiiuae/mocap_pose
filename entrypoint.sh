@@ -14,14 +14,17 @@ _term() {
     fi
     kill -s SIGINT $pid
 }
+
+echo "[start] simulate: $SIMULATE"
+
 # Use SIGTERM or TERM, does not seem to make any difference.
 trap _term TERM
-
 ros-with-env ros2 launch mocap_pose mocap_pose.launch \
     address:=$INDOOR_SERVER_IP_ADDRESS \
     lat:=$INDOOR_ORIGO_LATITUDE \
     lon:=$INDOOR_ORIGO_LONGITUDE \
-    alt:=$INDOOR_ORIGO_ALTITUDE &
+    alt:=$INDOOR_ORIGO_ALTITUDE \
+    sim:=$SIMULATE &
 child=$!
 
 echo "Waiting for pid $child"
