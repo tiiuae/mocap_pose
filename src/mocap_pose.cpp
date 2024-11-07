@@ -314,7 +314,7 @@ void MocapPose::WorkerThread()
             if (!rtProtocol.Connected())
             {
                 if (!rtProtocol.Connect(impl_->serverAddress.c_str(),
-                                        impl_->basePort,
+                                        impl_->basePort+1,
                                         &udpPort,
                                         impl_->sdkMajorVersion,
                                         impl_->sdkMinorVersion,
@@ -323,7 +323,7 @@ void MocapPose::WorkerThread()
                     RCLCPP_WARN(get_logger(),
                                 "Trying to connect to %s:%d : %s",
                                 impl_->serverAddress.c_str(),
-                                impl_->basePort,
+                                impl_->basePort+1,
                                 rtProtocol.GetErrorString());
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     continue;
@@ -331,7 +331,7 @@ void MocapPose::WorkerThread()
                 else
                 {
                     RCLCPP_INFO(
-                        get_logger(), "Succesfully connected to %s:%d", impl_->serverAddress.c_str(), impl_->basePort);
+                        get_logger(), "Succesfully connected to %s:%d", impl_->serverAddress.c_str(), impl_->basePort+1);
                 }
             }
 
