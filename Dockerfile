@@ -1,5 +1,5 @@
 # Given dynamically from CI job.
-FROM --platform=${BUILDPLATFORM:-linux/amd64} ghcr.io/tiiuae/fog-ros-sdk:px4-msgs-7.0.0-${TARGETARCH:-amd64} AS builder
+FROM --platform=${BUILDPLATFORM:-linux/amd64} ghcr.io/tiiuae/fog-ros-sdk:experiment_sdk_without_extraction-${TARGETARCH:-amd64} AS builder
 
 # Must be defined another time after "FROM" keyword.
 ARG TARGETARCH
@@ -16,7 +16,7 @@ RUN /packaging/build_colcon_sdk.sh ${TARGETARCH:-amd64}
 
 FROM ghcr.io/tiiuae/pkcs11-closer:sha-7bec028 AS closer
 
-FROM ghcr.io/tiiuae/fog-ros-baseimage:px4-msgs-7.0.0
+FROM ghcr.io/tiiuae/fog-ros-baseimage:experiment_sdk_without_extraction
 
 HEALTHCHECK --interval=5s \
 	CMD fog-health check --metric=location_update_count --diff-gte=5.0 \
