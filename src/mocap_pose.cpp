@@ -111,9 +111,15 @@ struct MocapPose::Impl
         const double heading_rad = -atan2(siny_cosp, cosy_cosp);
 
         sensor_gps.timestamp = timestamp.nanoseconds() / 1000ULL;
-        sensor_gps.lat = (uint32_t)std::round(point.latitude * 10000000);
-        sensor_gps.lon = (uint32_t)std::round(point.longitude * 10000000);
-        sensor_gps.alt = (uint32_t)std::round(point.altitude * 1000);
+        // PX4-msgs 6.0.0
+        // sensor_gps.lat = (uint32_t)std::round(point.latitude * 10000000);
+        // sensor_gps.lon = (uint32_t)std::round(point.longitude * 10000000);
+        // sensor_gps.alt = (uint32_t)std::round(point.altitude * 1000);
+
+        // PX4-msgs 7.0.0 -> accepts float64, no need for rounding
+        sensor_gps.latitude_deg = point.latitude;
+        sensor_gps.longitude_deg = point.longitude;
+        sensor_gps.altitude_msl_m = point.altitude;
         sensor_gps.s_variance_m_s = 0.2f;
 
         sensor_gps.fix_type = 3;
