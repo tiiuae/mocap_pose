@@ -44,6 +44,7 @@ struct MocapPose::Impl
     Eigen::Vector3f last_velocity{};
 
     rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr publisher;
+    rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr publisher2;
 
     std::shared_ptr<rclcpp::ParameterEventHandler> param_subscriber;
     std::shared_ptr<rclcpp::ParameterCallbackHandle> cb_handle_lat;
@@ -239,6 +240,7 @@ MocapPose::MocapPose() : Node("MocapPose"), impl_(new MocapPose::Impl()), minTim
     impl_->cb_handle_alt = impl_->param_subscriber->add_parameter_callback("home_alt", callback);
 
     impl_->publisher = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic, 10);
+    impl_->publisher2 = create_publisher<px4_msgs::msg::SensorGps>(kGpsSensorTopic2, 10); // For secondary FC
     impl_->worker_thread_running = true;
     impl_->worker_thread = std::thread(&MocapPose::WorkerThread, this);
 }
@@ -437,6 +439,7 @@ void MocapPose::WorkerThread()
                                                     impl_->last_published_timestamp.seconds(),
                                                     gps_timestamp.seconds());
                                         impl_->publisher->publish(gps_msg);
+                                        impl_->publisher2->publish(gps_msg); // For secondary FC
                                         impl_->last_published_timestamp = timestamp;
                                         very_first_message = false;
                                     }
