@@ -6,8 +6,6 @@ on:
       - 'README.md'
       - 'CHANGELOG.rst'
   pull_request:
-  repository_dispatch:
-    types: [fog-ros-baseimage-update]
   workflow_dispatch:
 
 jobs:
