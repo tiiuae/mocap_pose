@@ -1,8 +1,15 @@
 # Given dynamically from CI job.
+FROM --platform=${BUILDPLATFORM:-linux/amd64} ghcr.io/tiiuae/tii-px4-msgs:sha-77f972d-${TARGETARCH:-amd64}-humble AS px4msgs
 FROM --platform=${BUILDPLATFORM:-linux/amd64} ghcr.io/tiiuae/fog-ros-sdk:v3.4.0-${TARGETARCH:-amd64} AS builder
 
 # Must be defined another time after "FROM" keyword.
 ARG TARGETARCH
+
+COPY --from=px4msgs /artifacts /artifacts
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /artifacts/*.deb \
+    && rm -rf /var/lib/apt/lists/*
 
 # SRC_DIR environment variable is defined in the fog-ros-sdk image.
 # The same workspace path is used by all ROS2 components.
@@ -33,3 +40,9 @@ WORKDIR $WORKSPACE_DIR
 
 COPY --from=closer /pkcs11-closer /
 COPY --from=builder $WORKSPACE_DIR/install install
+COPY --from=builder /artifacts /artifacts
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /artifacts/*.deb \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
