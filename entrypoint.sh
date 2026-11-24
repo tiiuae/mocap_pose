@@ -1,5 +1,7 @@
 #!/bin/bash -e
 
+source /opt/mocap_pose/local_setup.bash
+
 _term() {
     # FILL UP PROCESS SEARCH PATTERN HERE TO FIND PROPER PROCESS FOR SIGINT:
     pattern="mocap_pose/mocap_pose_node"
@@ -17,7 +19,7 @@ _term() {
 # Use SIGTERM or TERM, does not seem to make any difference.
 trap _term TERM
 
-ros-with-env ros2 launch mocap_pose mocap_pose.launch \
+ros2 launch mocap_pose mocap_pose.launch \
     address:=$INDOOR_SERVER_IP_ADDRESS \
     lat:=$INDOOR_ORIGO_LATITUDE \
     lon:=$INDOOR_ORIGO_LONGITUDE \
