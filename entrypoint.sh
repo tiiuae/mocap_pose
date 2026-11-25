@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-source /opt/mocap_pose/local_setup.bash
+source /opt/mocap_pose/share/mocap_pose/local_setup.bash
 
 _term() {
     # FILL UP PROCESS SEARCH PATTERN HERE TO FIND PROPER PROCESS FOR SIGINT:
