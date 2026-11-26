@@ -48,6 +48,7 @@ FROM ghcr.io/tiiuae/pkcs11-closer:sha-7bec028 AS closer
 
 FROM base AS runtime
 
+ENV FASTRTPS_DEFAULT_PROFILES_FILE=/DEFAULT_FASTRTPS_PROFILES.xml
 WORKDIR /opt/mocap_pose
 
 COPY --from=closer /pkcs11-closer /
@@ -55,7 +56,7 @@ COPY --from=builder /opt/mocap_pose/ /opt/mocap_pose/
 COPY --from=builder /prometheus-cpp/LICENSE /usr/share/doc/prometheus-cpp/LICENSE
 COPY --from=builder /prometheus-cpp/3rdparty/civetweb/LICENSE.md /usr/share/doc/civetweb/LICENSE.md
 COPY LICENSE /usr/share/doc/mocap_pose/LICENSE
-COPY entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh DEFAULT_FASTRTPS_PROFILES.xml /
 
 ENTRYPOINT ["/ros_entrypoint.sh", "/entrypoint.sh"]
 CMD []
