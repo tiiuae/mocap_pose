@@ -1,4 +1,4 @@
-FROM ghcr.io/tiiuae/tii-px4-msgs:sha-77f972d-${TARGETARCH:-amd64}-humble AS px4msgs
+FROM ghcr.io/tiiuae/tii-px4-msgs:sha-e2978b9-${TARGETARCH:-amd64}-humble AS px4msgs
 
 FROM ros:humble-ros-core-jammy AS base
 
